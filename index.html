@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Afkast — beregn afkastet på enhver dansk ejendom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --blue:#1763d1; --blue-dark:#0c447c; --blue-bg:#eaf1fc;
+    --ink:#0f172a; --muted:#64748b; --faint:#94a3b8;
+    --line:#e6e8ec; --bg:#ffffff; --bg2:#f7f8fa;
+    --green:#0f9b78; --green-bg:#e6f7f0;
+    --red:#dc2626; --red-bg:#fdeaea;
+    --radius:14px; --radius-sm:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; -webkit-font-smoothing:antialiased;}
+  a{color:inherit;}
+  .wrap{max-width:1060px; margin:0 auto; padding:0 24px;}
+  /* nav */
+  nav{display:flex; align-items:center; justify-content:space-between; padding:18px 0; border-bottom:1px solid var(--line);}
+  .logo{display:flex; align-items:center; gap:10px; font-weight:600; font-size:19px;}
+  .logo .mark{width:32px; height:32px; border-radius:9px; background:var(--blue); color:#fff; display:flex; align-items:center; justify-content:center; font-size:18px;}
+  .logo .tag{font-size:12px; color:var(--faint); font-weight:400; margin-left:4px;}
+  .btn{font:inherit; font-weight:500; cursor:pointer; border-radius:var(--radius-sm); padding:10px 18px; border:1px solid var(--blue); background:var(--blue); color:#fff; transition:.15s;}
+  .btn:hover{background:var(--blue-dark); border-color:var(--blue-dark);}
+  .btn.ghost{background:transparent; color:var(--blue); }
+  .btn.ghost:hover{background:var(--blue-bg);}
+  /* hero */
+  .hero{text-align:center; padding:54px 0 30px;}
+  .hero h1{font-size:42px; line-height:1.12; font-weight:600; margin:0 0 14px; letter-spacing:-0.02em;}
+  .hero h1 .hl{color:var(--blue);}
+  .hero p{font-size:18px; color:var(--muted); max-width:560px; margin:0 auto;}
+  .pill{display:inline-block; font-size:13px; font-weight:500; color:var(--blue-dark); background:var(--blue-bg); padding:6px 14px; border-radius:999px; margin-bottom:20px;}
+  /* calculator */
+  .calc{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); box-shadow:0 1px 3px rgba(15,23,42,.04); padding:26px; margin:18px 0 30px;}
+  .search{position:relative; margin-bottom:22px;}
+  .search input{width:100%; font:inherit; font-size:16px; padding:14px 16px 14px 46px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2); outline:none; transition:.15s;}
+  .search input:focus{border-color:var(--blue); background:#fff; box-shadow:0 0 0 3px var(--blue-bg);}
+  .search .ico{position:absolute; left:16px; top:50%; transform:translateY(-50%); color:var(--faint); font-size:18px;}
+  .sugg{position:absolute; left:0; right:0; top:54px; z-index:9; background:#fff; border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; box-shadow:0 8px 24px rgba(15,23,42,.10);}
+  .sugg div{padding:11px 16px; font-size:15px; cursor:pointer; display:flex; align-items:center; gap:9px;}
+  .sugg div:hover{background:var(--bg2);}
+  .sugg div+div{border-top:1px solid var(--line);}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:26px;}
+  /* property facts */
+  .facts{background:var(--bg2); border-radius:var(--radius-sm); padding:18px 20px;}
+  .facts .addr{display:flex; align-items:center; gap:8px; font-weight:600; font-size:16px; margin-bottom:14px;}
+  .facts .addr .ico{color:var(--blue);}
+  .fgrid{display:grid; grid-template-columns:1fr 1fr; gap:14px 16px;}
+  .fgrid .k{font-size:12px; color:var(--faint);}
+  .fgrid .v{font-size:15px; font-weight:500;}
+  .energy{display:inline-block; min-width:24px; text-align:center; font-weight:600; font-size:13px; padding:2px 9px; border-radius:6px;}
+  /* sliders */
+  .slider+.slider{margin-top:18px;}
+  .slider .top{display:flex; justify-content:space-between; font-size:14px; margin-bottom:6px;}
+  .slider .top .lbl{color:var(--muted);}
+  .slider .top .out{font-weight:600;}
+  input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:5px; border-radius:3px; background:var(--line); outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:var(--blue); cursor:pointer; border:3px solid #fff; box-shadow:0 1px 4px rgba(15,23,42,.25);}
+  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:var(--blue); cursor:pointer; border:3px solid #fff;}
+  /* results */
+  .results{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:24px;}
+  .metric{background:var(--bg2); border-radius:var(--radius-sm); padding:16px;}
+  .metric .k{font-size:13px; color:var(--muted);}
+  .metric .v{font-size:27px; font-weight:600; margin-top:5px; letter-spacing:-0.01em;}
+  .subline{display:flex; flex-wrap:wrap; gap:8px 26px; font-size:14px; color:var(--muted); margin-top:18px; padding-top:16px; border-top:1px solid var(--line);}
+  .subline b{color:var(--ink); font-weight:600;}
+  .disc{font-size:12.5px; color:var(--faint); margin-top:16px;}
+  /* value props */
+  .vals{display:grid; grid-template-columns:repeat(3,1fr); gap:22px; padding:42px 0 10px;}
+  .val .vi{width:42px; height:42px; border-radius:11px; background:var(--blue-bg); color:var(--blue); display:flex; align-items:center; justify-content:center; font-size:22px; margin-bottom:12px;}
+  .val h3{margin:0 0 6px; font-size:17px; font-weight:600;}
+  .val p{margin:0; font-size:14.5px; color:var(--muted);}
+  /* waitlist */
+  .cta{background:var(--blue); color:#fff; border-radius:var(--radius); padding:44px 32px; text-align:center; margin:48px 0;}
+  .cta h2{font-size:28px; font-weight:600; margin:0 0 10px; letter-spacing:-0.01em;}
+  .cta p{font-size:16px; opacity:.9; margin:0 0 24px;}
+  .wform{display:flex; gap:10px; max-width:440px; margin:0 auto; flex-wrap:wrap; justify-content:center;}
+  .wform input{flex:1; min-width:220px; font:inherit; font-size:16px; padding:13px 16px; border-radius:var(--radius-sm); border:none; outline:none;}
+  .wform .btn{background:#fff; color:var(--blue); border-color:#fff;}
+  .wform .btn:hover{background:#eef3fb; border-color:#eef3fb;}
+  .wok{display:none; font-size:16px; margin-top:6px;}
+  footer{border-top:1px solid var(--line); padding:26px 0 40px; font-size:13px; color:var(--faint); text-align:center;}
+  @media(max-width:760px){
+    .grid2{grid-template-columns:1fr;}
+    .results{grid-template-columns:1fr 1fr;}
+    .vals{grid-template-columns:1fr;}
+    .hero h1{font-size:32px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <nav>
+    <div class="logo"><span class="mark">A</span>Afkast<span class="tag">arbejdstitel</span></div>
+    <button class="btn ghost" onclick="document.getElementById('cta').scrollIntoView({behavior:'smooth'})">Få tidlig adgang</button>
+  </nav>
+
+  <section class="hero">
+    <span class="pill">Til private og mindre ejendomsinvestorer</span>
+    <h1>Beregn afkastet på <span class="hl">enhver dansk ejendom</span></h1>
+    <p>Søg en adresse, og se med det samme om investeringen hænger sammen — afkast, likviditet og forrentning af din egenkapital. På sekunder, ikke timer.</p>
+  </section>
+
+  <section class="calc">
+    <div class="search">
+      <span class="ico">⌕</span>
+      <input id="addr" type="text" placeholder="Søg adresse, fx Nørrebrogade 155…" autocomplete="off" aria-label="Søg adresse" />
+      <div id="sugg" class="sugg"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="facts">
+        <div class="addr"><span class="ico">⚲</span><span id="pt-addr">—</span></div>
+        <div class="fgrid">
+          <div><div class="k">Boligtype</div><div class="v" id="pt-type">—</div></div>
+          <div><div class="k">Areal</div><div class="v" id="pt-area">—</div></div>
+          <div><div class="k">Værelser</div><div class="v" id="pt-rooms">—</div></div>
+          <div><div class="k">Opført</div><div class="v" id="pt-year">—</div></div>
+          <div><div class="k">Energimærke</div><div class="v" id="pt-energy">—</div></div>
+          <div><div class="k">Off. vurdering</div><div class="v" id="pt-vur">—</div></div>
+          <div><div class="k">Grundskyld / år</div><div class="v" id="pt-tax">—</div></div>
+          <div><div class="k">Senest solgt</div><div class="v" id="pt-sold">—</div></div>
+          <div style="grid-column:1/3;"><div class="k">Zone</div><div class="v" id="pt-zone">—</div></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="slider"><div class="top"><span class="lbl">Købspris</span><span class="out" id="o-price">—</span></div><input id="i-price" type="range" min="500000" max="8000000" step="25000"></div>
+        <div class="slider"><div class="top"><span class="lbl">Forventet leje / md</span><span class="out" id="o-rent">—</span></div><input id="i-rent" type="range" min="3000" max="40000" step="100"></div>
+        <div class="slider"><div class="top"><span class="lbl">Tomgang</span><span class="out" id="o-vac">—</span></div><input id="i-vac" type="range" min="0" max="20" step="1"></div>
+        <div class="slider"><div class="top"><span class="lbl">Udbetaling</span><span class="out" id="o-down">—</span></div><input id="i-down" type="range" min="5" max="50" step="1"></div>
+        <div class="slider"><div class="top"><span class="lbl">Rente (30 år)</span><span class="out" id="o-rate">—</span></div><input id="i-rate" type="range" min="0" max="8" step="0.1"></div>
+        <div class="slider"><div class="top"><span class="lbl">Driftsudgifter / år</span><span class="out" id="o-cost">—</span></div><input id="i-cost" type="range" min="0" max="160000" step="1000"></div>
+      </div>
+    </div>
+
+    <div class="results">
+      <div class="metric" id="card-cf"><div class="k">Likviditet / md</div><div class="v" id="r-cf">—</div></div>
+      <div class="metric"><div class="k">Egenkapitalforrentning</div><div class="v" id="r-coc">—</div></div>
+      <div class="metric"><div class="k">Bruttoafkast</div><div class="v" id="r-gross">—</div></div>
+      <div class="metric"><div class="k">Nettoafkast</div><div class="v" id="r-net">—</div></div>
+    </div>
+
+    <div class="subline">
+      <span>Egenkapital krævet: <b id="r-equity">—</b></span>
+      <span>Månedlig ydelse: <b id="r-pmt">—</b></span>
+      <span>Break-even leje: <b id="r-be">—</b> / md</span>
+    </div>
+
+    <p class="disc">ⓘ Prototype — ejendomsdata er illustrativ for fire eksempel-adresser. I produktion hentes data live fra BBR, Ejerfortegnelsen, offentlig vurdering, energimærke og Plandata.</p>
+  </section>
+
+  <section class="vals">
+    <div class="val"><div class="vi">⏱</div><h3>Spar timer pr. handel</h3><p>Slip for at samle data fra BBR, vurdering, energimærke og tingbog hver for sig. Det hele på én side.</p></div>
+    <div class="val"><div class="vi">📈</div><h3>Bedre beslutninger</h3><p>Se afkast og likviditet før du byder — og find hurtigt ud af om en bolig overhovedet er værd at se på.</p></div>
+    <div class="val"><div class="vi">🏷</div><h3>En brøkdel af prisen</h3><p>Professionelle platforme starter ved ~16.000 kr/år. Afkast er bygget til private investorer — til en pris der giver mening.</p></div>
+  </section>
+
+  <section class="cta" id="cta">
+    <h2>Vil du være blandt de første?</h2>
+    <p>Skriv dig op, så får du adgang når vi åbner — og er med til at forme produktet.</p>
+    <form class="wform" id="wform">
+      <input type="email" id="email" placeholder="din@email.dk" required aria-label="Email" />
+      <button class="btn" type="submit">Skriv mig op</button>
+    </form>
+    <div class="wok" id="wok">✓ Tak! Vi skriver til dig, så snart vi åbner.</div>
+  </section>
+
+  <footer>
+    Afkast (arbejdstitel) · Prototype til konceptvalidering · Data er illustrativ.
+  </footer>
+</div>
+
+<script>
+(function(){
+  var ADDR = [
+    {full:"Nørrebrogade 155, 2. tv, 2200 København N", type:"Ejerlejlighed", area:68, rooms:2, year:1903, energy:"D", vur:2800000, tax:4200, sold:"2019 · 2.650.000 kr", zone:"Boligområde", price:3295000, rent:11500, cost:42000},
+    {full:"Silkeborgvej 230, 8230 Åbyhøj", type:"Villa", area:142, rooms:5, year:1968, energy:"C", vur:3400000, tax:11800, sold:"2016 · 2.950.000 kr", zone:"Boligområde (åben-lav)", price:4150000, rent:15500, cost:58000},
+    {full:"Vesterbrogade 89, 4. th, 1620 København V", type:"Ejerlejlighed", area:54, rooms:2, year:1899, energy:"E", vur:2350000, tax:3600, sold:"2021 · 2.795.000 kr", zone:"Bymidte", price:2895000, rent:9800, cost:36000},
+    {full:"Thorsgade 12, 1. tv, 5000 Odense C", type:"Ejerlejlighed", area:78, rooms:3, year:1932, energy:"D", vur:1450000, tax:5100, sold:"2020 · 1.690.000 kr", zone:"Boligområde", price:1995000, rent:8900, cost:31000}
+  ];
+  var nf = new Intl.NumberFormat('da-DK');
+  function kr(n){ return nf.format(Math.round(n)) + " kr"; }
+  function pc(n){ return (Math.round(n*10)/10).toFixed(1).replace('.',',') + " %"; }
+  function $(id){ return document.getElementById(id); }
+
+  function energyHtml(l){
+    var map = {A:["#e6f7f0","#0f6e56"],B:["#e6f7f0","#0f6e56"],C:["#fdf2da","#854f0b"],D:["#fdf2da","#854f0b"],E:["#fdeaea","#a32d2d"],F:["#fdeaea","#a32d2d"],G:["#fdeaea","#a32d2d"]};
+    var c = map[l] || ["#f1efe8","#444441"];
+    return '<span class="energy" style="background:'+c[0]+'; color:'+c[1]+';">'+l+'</span>';
+  }
+
+  function renderProp(a){
+    $("pt-addr").textContent = a.full;
+    $("pt-type").textContent = a.type;
+    $("pt-area").textContent = a.area + " m²";
+    $("pt-rooms").textContent = a.rooms;
+    $("pt-year").textContent = a.year;
+    $("pt-energy").innerHTML = energyHtml(a.energy);
+    $("pt-vur").textContent = kr(a.vur);
+    $("pt-tax").textContent = kr(a.tax);
+    $("pt-sold").textContent = a.sold;
+    $("pt-zone").textContent = a.zone;
+  }
+
+  function compute(){
+    var P = +$("i-price").value, Rm = +$("i-rent").value, vac = +$("i-vac").value;
+    var d = +$("i-down").value, i = +$("i-rate").value, D = +$("i-cost").value;
+
+    $("o-price").textContent = kr(P);
+    $("o-rent").textContent = kr(Rm);
+    $("o-vac").textContent = vac + " %";
+    $("o-down").textContent = d + " %";
+    $("o-rate").textContent = pc(i);
+    $("o-cost").textContent = kr(D);
+
+    var R = Rm * 12 * (1 - vac/100);
+    var down = P * d / 100;
+    var fees = Math.round(P * 0.006) + 1850 + 6000;
+    var equity = down + fees;
+    var loan = P - down;
+    var r = i / 100 / 12, n = 360;
+    var pmtM = r === 0 ? loan / n : loan * r / (1 - Math.pow(1 + r, -n));
+    var debtYr = pmtM * 12;
+    var noi = R - D;
+    var cfM = (noi - debtYr) / 12;
+
+    $("r-gross").textContent = pc(R / P * 100);
+    $("r-net").textContent = pc(noi / P * 100);
+    $("r-coc").textContent = pc((noi - debtYr) / equity * 100);
+    $("r-cf").textContent = (cfM >= 0 ? "+" : "−") + kr(Math.abs(cfM));
+    $("card-cf").style.background = cfM >= 0 ? "var(--green-bg)" : "var(--red-bg)";
+    $("r-cf").style.color = cfM >= 0 ? "var(--green)" : "var(--red)";
+
+    $("r-equity").textContent = kr(equity);
+    $("r-pmt").textContent = kr(pmtM);
+    $("r-be").textContent = kr((D + debtYr) / 12 / (1 - vac/100));
+  }
+
+  function setAddress(a){
+    $("i-price").value = a.price; $("i-rent").value = a.rent; $("i-cost").value = a.cost;
+    $("i-vac").value = 4; $("i-down").value = 20; $("i-rate").value = 4.5;
+    $("addr").value = a.full;
+    $("sugg").innerHTML = "";
+    renderProp(a); compute();
+  }
+
+  function showSugg(q){
+    var box = $("sugg"), ql = q.trim().toLowerCase();
+    var list = ql === "" ? ADDR : ADDR.filter(function(a){ return a.full.toLowerCase().indexOf(ql) > -1; });
+    if(list.length === 0){ box.innerHTML = ""; return; }
+    box.innerHTML = "";
+    list.forEach(function(a){
+      var el = document.createElement("div");
+      el.innerHTML = '<span style="color:#94a3b8;">⚲</span>' + a.full;
+      el.onclick = function(){ setAddress(a); };
+      box.appendChild(el);
+    });
+  }
+
+  ["i-price","i-rent","i-vac","i-down","i-rate","i-cost"].forEach(function(id){
+    $(id).addEventListener("input", compute);
+  });
+  $("addr").addEventListener("input", function(e){ showSugg(e.target.value); });
+  $("addr").addEventListener("focus", function(e){ if(e.target.value==="") showSugg(""); });
+  document.addEventListener("click", function(e){
+    if(!e.target.closest(".search")) $("sugg").innerHTML = "";
+  });
+
+  $("wform").addEventListener("submit", function(e){
+    e.preventDefault();
+    // TODO: connect to a real backend / form service (Formspree, Tally, egen API) for at indsamle emails.
+    $("wform").style.display = "none";
+    $("wok").style.display = "block";
+  });
+
+  setAddress(ADDR[0]);
+})();
+</script>
+</body>
+</html>
