@@ -48,7 +48,7 @@
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--blue); cursor:pointer; border:3px solid #fff; box-shadow:0 1px 4px rgba(15,23,42,.25);}
   /* finder layout */
   .finder{display:grid; grid-template-columns:290px 1fr; gap:20px; align-items:start;}
-  .fpanel{padding:18px 20px; position:sticky; top:78px;}
+  .fpanel{padding:18px 20px; position:sticky; top:78px; max-height:calc(100vh - 96px); overflow-y:auto;}
   .fsection{margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid var(--line);}
   .fsection:last-child{border:none; margin:0; padding:0;}
   .fsection h4{margin:0 0 12px; font-size:12px; font-weight:600; color:var(--faint); text-transform:uppercase; letter-spacing:.04em;}
@@ -107,6 +107,17 @@
   .pcard textarea{width:100%; font:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:6px; resize:vertical; min-height:32px; background:#fff;}
   .pcard select{width:100%; font:inherit; font-size:12px; padding:5px; border:1px solid var(--line); border-radius:8px; background:#fff; margin-top:7px;}
   .pcard .rm{border:none; background:none; color:var(--faint); cursor:pointer; font-size:15px;}
+  .segbtn{display:inline-flex; border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; background:var(--bg); flex-shrink:0;}
+  .segbtn button{border:none; background:transparent; padding:8px 16px; font-weight:500; color:var(--muted); cursor:pointer;}
+  .segbtn button.active{background:var(--blue-bg); color:var(--blue-dark);}
+  .pipe-list{display:flex; flex-direction:column; gap:10px;}
+  .prow{display:flex; align-items:center; gap:16px; padding:14px 18px;}
+  .prow .sc{width:44px; text-align:center; font-weight:600; font-size:20px; flex-shrink:0;}
+  .prow .pmain{flex:1; min-width:0;}
+  .prow .pa2{font-weight:600; font-size:15px;}
+  .prow .pm2{font-size:13px; color:var(--muted); margin-top:2px;}
+  .prow select{font:inherit; font-size:13px; padding:7px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; flex-shrink:0;}
+  .prow .rm{border:none; background:none; color:var(--faint); cursor:pointer; font-size:17px; flex-shrink:0;}
   .empty{color:var(--faint); font-size:13px; text-align:center; padding:30px 0;}
   /* dashboard strip */
   .dash{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px;}
@@ -192,8 +203,12 @@
   </section>
 
   <section class="view" id="view-pipeline">
-    <div class="vhead"><h1>Pipeline</h1><p>Hold styr på dine leads — outreach-status, noter og kontakt, samlet ét sted.</p></div>
-    <div class="board" id="board"></div>
+    <div class="vhead" style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">
+      <div><h1>Pipeline</h1><p style="margin-bottom:0;">Hold styr på dine leads — outreach-status, noter og kontakt, samlet ét sted.</p></div>
+      <div class="segbtn"><button data-pv="board" class="active">Board</button><button data-pv="list">Liste</button></div>
+    </div>
+    <div class="board" id="board" style="margin-top:20px;"></div>
+    <div class="pipe-list" id="pipe-list" style="display:none; margin-top:20px;"></div>
   </section>
 
 </div>
@@ -222,7 +237,22 @@
     {id:9, addr:"Strandvejen 210", city:"Hellerup", region:"Hovedstaden", lat:55.7330, lng:12.5730, type:"Ejerlejlighed", area:96, rooms:3, units:1, year:1932, energy:"C", vur:5200000, tax:14000, saleYear:2020, lastSalePrice:5900000, zone:"Boligområde", price:6450000, rent:18500, cost:60000, ownerName:"Sofie Berg", ownerType:"Privatperson", ownerAge:48, ownerLivesHere:true, ownerPropCount:1},
     {id:10, addr:"Frederiksgade 9", city:"Vejle", region:"Syddanmark", lat:55.7090, lng:9.5350, type:"Ejerlejlighed", area:70, rooms:2, units:1, year:1928, energy:"D", vur:1200000, tax:4000, saleYear:2004, lastSalePrice:780000, zone:"Bymidte", price:1695000, rent:8200, cost:26000, ownerName:"Inger Kjær", ownerType:"Privatperson", ownerAge:76, ownerLivesHere:false, ownerPropCount:2},
     {id:11, addr:"Vestergade 25", city:"Svendborg", region:"Syddanmark", lat:55.0600, lng:10.6080, type:"Flerfamiliehus", area:240, rooms:9, units:3, year:1930, energy:"E", vur:1900000, tax:8400, saleYear:2016, lastSalePrice:2050000, zone:"Bymidte", price:2795000, rent:21000, cost:78000, ownerName:"Sydfyn Ejendomme A/S", ownerType:"Selskab", ownerAge:null, ownerLivesHere:false, ownerPropCount:8},
-    {id:12, addr:"Ny Munkegade 5, 3. th", city:"Aarhus", region:"Midtjylland", lat:56.1630, lng:10.2030, type:"Ejerlejlighed", area:60, rooms:2, units:1, year:1910, energy:"D", vur:2100000, tax:5200, saleYear:2009, lastSalePrice:1400000, zone:"Bymidte", price:2595000, rent:10500, cost:32000, ownerName:"Hanne Poulsen", ownerType:"Privatperson", ownerAge:71, ownerLivesHere:false, ownerPropCount:1}
+    {id:12, addr:"Ny Munkegade 5, 3. th", city:"Aarhus", region:"Midtjylland", lat:56.1630, lng:10.2030, type:"Ejerlejlighed", area:60, rooms:2, units:1, year:1910, energy:"D", vur:2100000, tax:5200, saleYear:2009, lastSalePrice:1400000, zone:"Bymidte", price:2595000, rent:10500, cost:32000, ownerName:"Hanne Poulsen", ownerType:"Privatperson", ownerAge:71, ownerLivesHere:false, ownerPropCount:1},
+    {id:13, addr:"Blågårdsgade 12, 2. th", city:"København", region:"Hovedstaden", lat:55.6885, lng:12.5555, type:"Ejerlejlighed", area:62, rooms:2, units:1, year:1905, energy:"D", vur:3100000, tax:4200, saleYear:2002, lastSalePrice:1050000, zone:"Boligområde", price:3600000, rent:12500, cost:40000, ownerName:"Egon Mikkelsen", ownerType:"Privatperson", ownerAge:80, ownerLivesHere:false, ownerPropCount:3},
+    {id:14, addr:"Nordre Frihavnsgade 55, 4. tv", city:"København", region:"Hovedstaden", lat:55.7075, lng:12.5790, type:"Ejerlejlighed", area:84, rooms:3, units:1, year:1908, energy:"C", vur:4600000, tax:6800, saleYear:2019, lastSalePrice:4200000, zone:"Boligområde", price:5100000, rent:16000, cost:46000, ownerName:"Camilla Winther", ownerType:"Privatperson", ownerAge:44, ownerLivesHere:true, ownerPropCount:1},
+    {id:15, addr:"Amagerbrogade 128", city:"København S", region:"Hovedstaden", lat:55.6560, lng:12.6030, type:"Flerfamiliehus", area:260, rooms:8, units:4, year:1932, energy:"D", vur:6200000, tax:15000, saleYear:2004, lastSalePrice:3400000, zone:"Bymidte", price:8900000, rent:52000, cost:140000, ownerName:"Bo Kristensen", ownerType:"Privatperson", ownerAge:73, ownerLivesHere:false, ownerPropCount:6},
+    {id:16, addr:"Godthåbsvej 90, 3. th", city:"Frederiksberg", region:"Hovedstaden", lat:55.6900, lng:12.5250, type:"Ejerlejlighed", area:76, rooms:3, units:1, year:1926, energy:"D", vur:3900000, tax:5200, saleYear:2011, lastSalePrice:2800000, zone:"Boligområde", price:4500000, rent:14000, cost:42000, ownerName:"Frederiksberg Bolig ApS", ownerType:"Selskab", ownerAge:null, ownerLivesHere:false, ownerPropCount:9},
+    {id:17, addr:"Valby Langgade 210", city:"Valby", region:"Hovedstaden", lat:55.6635, lng:12.5120, type:"Enfamiliehus", area:128, rooms:4, units:1, year:1931, energy:"E", vur:4100000, tax:9800, saleYear:2001, lastSalePrice:1900000, zone:"Åben-lav bolig", price:5200000, rent:17500, cost:52000, ownerName:"Grethe Andersen", ownerType:"Privatperson", ownerAge:79, ownerLivesHere:true, ownerPropCount:1},
+    {id:18, addr:"Jægersborg Allé 44", city:"Charlottenlund", region:"Hovedstaden", lat:55.7500, lng:12.5820, type:"Enfamiliehus", area:210, rooms:6, units:1, year:1928, energy:"C", vur:11500000, tax:26000, saleYear:2006, lastSalePrice:6800000, zone:"Åben-lav bolig", price:13900000, rent:32000, cost:90000, ownerName:"Henrik Lund", ownerType:"Privatperson", ownerAge:71, ownerLivesHere:false, ownerPropCount:2},
+    {id:19, addr:"Strandvejen 155, 1. tv", city:"Hellerup", region:"Hovedstaden", lat:55.7320, lng:12.5740, type:"Ejerlejlighed", area:102, rooms:3, units:1, year:1919, energy:"C", vur:6400000, tax:15000, saleYear:2018, lastSalePrice:5800000, zone:"Boligområde", price:7300000, rent:21000, cost:58000, ownerName:"Marie Holm", ownerType:"Privatperson", ownerAge:52, ownerLivesHere:true, ownerPropCount:2},
+    {id:20, addr:"Vanløse Allé 30, 2. th", city:"Vanløse", region:"Hovedstaden", lat:55.6875, lng:12.4890, type:"Ejerlejlighed", area:68, rooms:2, units:1, year:1938, energy:"D", vur:2700000, tax:4000, saleYear:2003, lastSalePrice:990000, zone:"Boligområde", price:3100000, rent:11000, cost:34000, ownerName:"Poul Erik Jensen", ownerType:"Privatperson", ownerAge:82, ownerLivesHere:false, ownerPropCount:4},
+    {id:21, addr:"Gl. Kongevej 120, 4. th", city:"Frederiksberg", region:"Hovedstaden", lat:55.6760, lng:12.5460, type:"Ejerlejlighed", area:58, rooms:2, units:1, year:1901, energy:"E", vur:3000000, tax:4100, saleYear:2021, lastSalePrice:3200000, zone:"Bymidte", price:3400000, rent:12000, cost:36000, ownerName:"Sara Nissen", ownerType:"Privatperson", ownerAge:38, ownerLivesHere:true, ownerPropCount:1},
+    {id:22, addr:"Tagensvej 200", city:"København", region:"Hovedstaden", lat:55.7130, lng:12.5450, type:"Flerfamiliehus", area:300, rooms:9, units:4, year:1929, energy:"D", vur:5400000, tax:13000, saleYear:2007, lastSalePrice:3100000, zone:"Bymidte", price:7600000, rent:46000, cost:128000, ownerName:"Ejendomsselskabet Nord A/S", ownerType:"Selskab", ownerAge:null, ownerLivesHere:false, ownerPropCount:12},
+    {id:23, addr:"Rødovrevej 80", city:"Rødovre", region:"Hovedstaden", lat:55.6810, lng:12.4540, type:"Enfamiliehus", area:140, rooms:5, units:1, year:1962, energy:"D", vur:3600000, tax:8600, saleYear:2013, lastSalePrice:2700000, zone:"Åben-lav bolig", price:4400000, rent:15000, cost:46000, ownerName:"Kurt Pedersen", ownerType:"Privatperson", ownerAge:75, ownerLivesHere:true, ownerPropCount:1},
+    {id:24, addr:"Lyngbyvej 320, 2. tv", city:"Gentofte", region:"Hovedstaden", lat:55.7460, lng:12.5560, type:"Ejerlejlighed", area:88, rooms:3, units:1, year:1936, energy:"C", vur:4800000, tax:9000, saleYear:2005, lastSalePrice:2400000, zone:"Boligområde", price:5600000, rent:17000, cost:50000, ownerName:"Lise Bang", ownerType:"Privatperson", ownerAge:68, ownerLivesHere:false, ownerPropCount:3},
+    {id:25, addr:"Islands Brygge 25, 5. th", city:"København S", region:"Hovedstaden", lat:55.6640, lng:12.5850, type:"Ejerlejlighed", area:95, rooms:3, units:1, year:2006, energy:"B", vur:5500000, tax:7200, saleYear:2020, lastSalePrice:5100000, zone:"Bymidte", price:6000000, rent:18500, cost:52000, ownerName:"Thomas Krogh", ownerType:"Privatperson", ownerAge:41, ownerLivesHere:true, ownerPropCount:2},
+    {id:26, addr:"Frederikssundsvej 190", city:"København", region:"Hovedstaden", lat:55.7070, lng:12.4980, type:"Flerfamiliehus", area:220, rooms:6, units:3, year:1934, energy:"E", vur:4200000, tax:10500, saleYear:2003, lastSalePrice:2200000, zone:"Bymidte", price:6100000, rent:38000, cost:104000, ownerName:"Aage Thomsen", ownerType:"Privatperson", ownerAge:84, ownerLivesHere:false, ownerPropCount:5},
+    {id:27, addr:"Dronningens Tværgade 8, 2. th", city:"København", region:"Hovedstaden", lat:55.6830, lng:12.5860, type:"Ejerlejlighed", area:110, rooms:4, units:1, year:1897, energy:"D", vur:6800000, tax:9500, saleYear:2008, lastSalePrice:4000000, zone:"Bymidte", price:7900000, rent:24000, cost:64000, ownerName:"Vibeke Sørensen", ownerType:"Privatperson", ownerAge:72, ownerLivesHere:false, ownerPropCount:1}
   ];
   var STAGES = ["Ikke kontaktet","Kontaktet","Dialog i gang","Møde afholdt","Interessant","Afsluttet"];
   var nf = new Intl.NumberFormat('da-DK');
@@ -251,6 +281,7 @@
   /* ---- Pipeline state ---- */
   var pipeline = [];
   try { pipeline = JSON.parse(localStorage.getItem('afkast_pipeline')||'[]'); } catch(e){}
+  pipeline.forEach(function(p){ if(STAGES.indexOf(p.stage)<0) p.stage=STAGES[0]; });
   function savePipe(){ try { localStorage.setItem('afkast_pipeline', JSON.stringify(pipeline)); } catch(e){} updatePipeCount(); }
   function inPipe(id){ return pipeline.some(function(p){return p.id===id;}); }
   function addPipe(id){ if(!inPipe(id)){ pipeline.push({id:id, stage:"Ikke kontaktet", note:""}); savePipe(); toast("Gemt som lead"); } else { toast("Allerede i pipeline"); } renderDash(); }
@@ -264,7 +295,7 @@
     document.querySelectorAll(".view").forEach(function(s){s.classList.remove("active");});
     $("view-"+v).classList.add("active");
     document.querySelectorAll(".tab").forEach(function(t){t.classList.toggle("active", t.getAttribute("data-view")===v);});
-    if(v==="pipeline") renderBoard();
+    if(v==="pipeline") renderPipeline();
     if(v==="find" && map){ setTimeout(function(){ map.invalidateSize(); }, 50); }
     window.scrollTo({top:0});
   }
@@ -416,6 +447,28 @@
     $("r-equity").textContent=kr(equity); $("r-pmt").textContent=kr(pmtM); $("r-be").textContent=kr((D+debtYr)/12/(1-vac/100));
   }
 
+  /* ---- Pipeline (board + list) ---- */
+  var pipeView="board";
+  function renderPipeline(){
+    if(pipeView==="board"){ $("board").style.display=""; $("pipe-list").style.display="none"; renderBoard(); }
+    else { $("board").style.display="none"; $("pipe-list").style.display=""; renderList(); }
+  }
+  function renderList(){
+    var box=$("pipe-list"); box.innerHTML="";
+    if(!pipeline.length){ box.innerHTML='<div class="card"><div class="empty">Din pipeline er tom. Find leads under “Find deals” og gem dem her.</div></div>'; return; }
+    pipeline.forEach(function(p){
+      var d=byId(p.id), sc=leadScore(d).score, tv=tier(sc);
+      var el=document.createElement("div"); el.className="card prow";
+      el.innerHTML='<div class="sc" style="color:'+tv[1]+'">'+sc+'</div>'+
+        '<div class="pmain"><div class="pa2">'+d.addr+'</div><div class="pm2">'+d.city+' · '+d.type+' · '+d.ownerName+' ('+d.ownerType+(d.ownerAge?', '+d.ownerAge+' år':'')+')</div></div>'+
+        '<select data-stage2="'+p.id+'">'+STAGES.map(function(s){return '<option'+(s===p.stage?' selected':'')+'>'+s+'</option>';}).join("")+'</select>'+
+        '<button class="rm" title="Fjern" data-rm2="'+p.id+'">×</button>';
+      box.appendChild(el);
+    });
+    box.querySelectorAll("[data-stage2]").forEach(function(s){ s.addEventListener("change", function(){ pipeline.filter(function(x){return x.id==+s.getAttribute("data-stage2");})[0].stage=s.value; savePipe(); }); });
+    box.querySelectorAll("[data-rm2]").forEach(function(b){ b.addEventListener("click", function(){ pipeline=pipeline.filter(function(p){return p.id!=+b.getAttribute("data-rm2");}); savePipe(); renderList(); renderDash(); }); });
+  }
+
   /* ---- Pipeline board ---- */
   function renderBoard(){
     var board=$("board"); board.innerHTML="";
@@ -445,7 +498,8 @@
   $("wait").addEventListener("click", function(e){ if(e.target===$("wait")) $("wait").classList.remove("open"); });
   $("wform").addEventListener("submit", function(e){ e.preventDefault(); $("wait").classList.remove("open"); toast("Tak! Vi skriver til dig når vi åbner."); });
 
-  initMap(); initFilters(); renderDash(); updatePipeCount();
+  document.querySelectorAll(".segbtn button").forEach(function(b){ b.addEventListener("click", function(){ pipeView=b.getAttribute("data-pv"); document.querySelectorAll(".segbtn button").forEach(function(x){x.classList.toggle("active", x===b);}); renderPipeline(); }); });
+  initMap(); initFilters(); renderDash(); savePipe();
 })();
 </script>
 </body>
