@@ -191,12 +191,11 @@
         <button class="btn" type="submit">Søg</button>
       </form>
       <div id="asst-settings" class="asst-settings" style="display:none;">
-        <label>Gemini API-nøgle — gemmes kun lokalt i din browser</label>
-        <input id="asst-key" type="password" autocomplete="off" placeholder="AIza…" style="width:100%; box-sizing:border-box;">
-        <label style="margin-top:10px;">Model</label>
+        <p class="asst-note" style="margin-top:0;">Assistenten kan køre en lille open source-model (Llama) direkte i din browser — ingen API-nøgle, ingen server, gratis. Uden den bruges en simpel indbygget fortolkning. Kræver Chrome/Edge på computer og henter modellen (~0,9 GB) første gang; derefter caches den lokalt.</p>
+        <label>Model (WebLLM / MLC)</label>
         <input id="asst-model" type="text" autocomplete="off" style="width:100%; box-sizing:border-box;">
-        <div style="margin-top:10px;"><button class="btn sm" id="asst-save" type="button">Gem</button></div>
-        <p class="asst-note">Uden nøgle bruger assistenten en simpel indbygget fortolkning (demo). Med nøgle kaldes Google Gemini direkte fra din browser — nøglen forlader kun din maskine til Google. Kun til test; i produktion skal kaldet gå gennem en server.</p>
+        <div style="margin-top:10px;"><button class="btn sm" id="asst-activate" type="button">Aktivér lokal AI-model</button></div>
+        <div id="asst-status" class="asst-note"></div>
       </div>
       <div id="asst-result" class="asst-result" style="display:none;"></div>
     </div>
@@ -421,10 +420,9 @@
     box.querySelectorAll("[data-gem]").forEach(function(b){ b.addEventListener("click", function(){ addPipe(+b.getAttribute("data-gem")); renderDeals(); }); });
   }
 
-  /* ---- AI assistant (natural language -> filters, Gemini) ---- */
-  var GEMINI_MODEL_DEFAULT = "gemini-2.5-flash-lite";
-  function gKey(){ try{ return localStorage.getItem('afkast_gemini_key')||""; }catch(e){ return ""; } }
-  function gModel(){ try{ return localStorage.getItem('afkast_gemini_model')||GEMINI_MODEL_DEFAULT; }catch(e){ return GEMINI_MODEL_DEFAULT; } }
+  /* ---- AI assistant (natural language -> filters, in-browser open model) ---- */
+  var WEBLLM_MODEL_DEFAULT = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
+  function llmModel(){ try{ return localStorage.getItem('afkast_llm_model')||WEBLLM_MODEL_DEFAULT; }catch(e){ return WEBLLM_MODEL_DEFAULT; } }
   function clampNum(v,mn,mx,d){ v=Number(v); if(isNaN(v)) return d; return Math.min(mx,Math.max(mn,Math.round(v))); }
 
   function asstChips(f){
@@ -463,7 +461,7 @@
       (res.reply?'<div class="asst-reply">'+res.reply+'</div>':'')+
       '<div class="asst-forslag"><div class="asst-forslag-t">Filterforslag</div><div class="chips">'+
         (chips.length? chips.map(function(t){return '<span class="chip">'+t+'</span>';}).join("") : '<span class="asst-note">Ingen specifikke filtre.</span>')+
-      '</div><div class="asst-actions"><button class="btn sm" id="asst-apply">Anvend filtre</button><button class="btn ghost sm" id="asst-clear2">Nulstil</button><span class="asst-src">'+(res.source==="gemini"?"Gemini":"demo-fortolkning")+'</span></div></div>';
+      '</div><div class="asst-actions"><button class="btn sm" id="asst-apply">Anvend filtre</button><button class="btn ghost sm" id="asst-clear2">Nulstil</button><span class="asst-src">'+(res.source==="llm"?"Lokal AI-model":"demo-fortolkning")+'</span></div></div>';
     $("asst-apply").onclick=function(){ applyAsstFilters(res.filters); };
     $("asst-clear2").onclick=function(){ $("f-reset").click(); box.style.display="none"; $("asst-input").value=""; };
   }
@@ -490,42 +488,42 @@
     var ch=asstChips(f);
     return {filters:f, reply:"Fortolket som: "+(ch.length?ch.join(" · "):"ingen specifikke kriterier")+".", source:"mock"};
   }
-  async function callGemini(text,key){
-    var schema={type:"object",properties:{filters:{type:"object",properties:{
-      region:{type:"string",enum:["","Hovedstaden","Midtjylland","Syddanmark","Nordjylland"]},
-      ownerType:{type:"string",enum:["","Privatperson","Selskab"]},
-      minAge:{type:"integer"},lives:{type:"string",enum:["","ja","nej"]},
-      minProps:{type:"integer"},minTenure:{type:"integer"},maxPrice:{type:"integer"},
-      type:{type:"string",enum:["","Enfamiliehus","Flerfamiliehus","Ejerlejlighed"]},
-      minUnits:{type:"integer"},minArea:{type:"integer"}}},reply:{type:"string"}},required:["filters","reply"]};
-    var sys="Du er assistent i en dansk ejendomsinvesteringsapp. Brugeren beskriver hvilke off-market leads de leder efter. Oversæt til søgefiltre. Felter: region (Hovedstaden/Midtjylland/Syddanmark/Nordjylland eller tom), ownerType (Privatperson/Selskab/tom), minAge (ejerens minimumsalder, 0=ingen), lives (ja=bor på adressen, nej=fraværende ejer, tom=ligegyldigt), minProps (min antal ejendomme ejeren ejer, 1=ingen), minTenure (min ejertid i år, 0=ingen), maxPrice (maks seneste handelspris i kroner, 0=ingen), type (Enfamiliehus/Flerfamiliehus/Ejerlejlighed/tom), minUnits (min boligenheder, 1=ingen), minArea (min beboelsesareal m², 0=ingen). Kriterier der ikke nævnes sættes til 0 eller tom streng. reply: én kort dansk sætning der opsummerer søgningen.";
-    var body={system_instruction:{parts:[{text:sys}]},contents:[{role:"user",parts:[{text:text}]}],generationConfig:{responseMimeType:"application/json",responseSchema:schema,temperature:0}};
-    var url="https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(gModel())+":generateContent?key="+encodeURIComponent(key);
-    var resp=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    if(!resp.ok){ var e=await resp.text(); throw new Error(resp.status+": "+e.slice(0,140)); }
-    var data=await resp.json();
-    var parts=(((data.candidates||[])[0]||{}).content||{}).parts||[];
-    var txt=parts.length&&parts[0].text?parts[0].text:"{}";
+  var _engine=null, _engineState="idle";
+  function setAsstStatus(html){ var el=$("asst-status"); if(el) el.innerHTML=html; }
+  async function loadEngine(){
+    if(_engineState==="loading"||_engineState==="ready") return;
+    if(typeof navigator==="undefined" || !navigator.gpu){ _engineState="error"; setAsstStatus("WebGPU understøttes ikke her. Brug Chrome eller Edge på computer. Assistenten bruger indbygget fortolkning i stedet."); return; }
+    _engineState="loading"; var b=$("asst-activate"); if(b) b.disabled=true;
+    setAsstStatus("Indlæser AI-model… (kan tage lidt første gang)");
+    try{
+      var webllm = await import("https://esm.run/@mlc-ai/web-llm");
+      _engine = await webllm.CreateMLCEngine(llmModel(), { initProgressCallback: function(p){ setAsstStatus("Henter model… " + (p && typeof p.progress==="number" ? Math.round(p.progress*100)+"%" : (p&&p.text)||"")); } });
+      _engineState="ready"; setAsstStatus("✓ Lokal AI-model klar — ingen nøgle, alt kører i din browser.");
+    }catch(err){
+      _engineState="error"; _engine=null; if(b) b.disabled=false;
+      setAsstStatus("Kunne ikke indlæse modellen ("+((err&&err.message)||err)+"). Assistenten bruger indbygget fortolkning i stedet.");
+    }
+  }
+  async function runBrowserModel(text){
+    var sys='Du er assistent i en dansk ejendomsinvesteringsapp. Oversæt brugerens beskrivelse af ønskede off-market leads til søgefiltre. Svar KUN med JSON på formen {"filters":{"region":"","ownerType":"","minAge":0,"lives":"","minProps":1,"minTenure":0,"maxPrice":0,"type":"","minUnits":1,"minArea":0},"reply":""}. region: Hovedstaden|Midtjylland|Syddanmark|Nordjylland eller tom. ownerType: Privatperson|Selskab eller tom. minAge: ejerens minimumsalder (0=ingen). lives: ja=bor på adressen, nej=fraværende ejer, tom=ligegyldigt. minProps: min antal ejendomme ejeren ejer (1=ingen). minTenure: min ejertid i år (0=ingen). maxPrice: maks seneste handelspris i kroner (0=ingen). type: Enfamiliehus|Flerfamiliehus|Ejerlejlighed eller tom. minUnits: min boligenheder (1=ingen). minArea: min m² (0=ingen). Kriterier der ikke nævnes sættes til 0 eller tom streng. reply: én kort dansk sætning.';
+    var r = await _engine.chat.completions.create({ messages:[{role:"system",content:sys},{role:"user",content:text}], temperature:0, max_tokens:400, response_format:{type:"json_object"} });
+    var txt = (r && r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content) || "{}";
     return JSON.parse(txt);
   }
   async function askAssistant(text){
     var box=$("asst-result"); box.style.display="block"; box.innerHTML='<div class="asst-reply">Tænker…</div>';
-    var key=gKey();
     try{
-      if(key){ var r=await callGemini(text,key); renderAsstResult({filters:(r&&r.filters)||{}, reply:(r&&r.reply)||"", source:"gemini"}); }
+      if(_engineState==="ready" && _engine){ var r=await runBrowserModel(text); renderAsstResult({filters:(r&&r.filters)||{}, reply:(r&&r.reply)||"", source:"llm"}); }
       else { renderAsstResult(mockParse(text)); }
     }catch(err){
-      var mk=mockParse(text); mk.reply="Kunne ikke kalde Gemini ("+((err&&err.message)||err)+"). Viser en simpel fortolkning i stedet."; renderAsstResult(mk);
+      var mk=mockParse(text); mk.reply="Modelfejl — viser en simpel fortolkning i stedet."; renderAsstResult(mk);
     }
   }
   function initAssistant(){
     $("asst-form").addEventListener("submit", function(e){ e.preventDefault(); var v=$("asst-input").value.trim(); if(v) askAssistant(v); });
     $("asst-gear").addEventListener("click", function(){ var s=$("asst-settings"); s.style.display = s.style.display==="none"?"block":"none"; });
-    $("asst-key").value=gKey(); $("asst-model").value=gModel();
-    $("asst-save").addEventListener("click", function(){
-      try{ localStorage.setItem('afkast_gemini_key', $("asst-key").value.trim()); localStorage.setItem('afkast_gemini_model', $("asst-model").value.trim()||GEMINI_MODEL_DEFAULT); }catch(e){}
-      $("asst-settings").style.display="none"; toast($("asst-key").value.trim()?"Gemini forbundet":"Nøgle ryddet");
-    });
+    $("asst-model").value = llmModel();
+    $("asst-activate").addEventListener("click", function(){ try{ localStorage.setItem('afkast_llm_model', $("asst-model").value.trim()||WEBLLM_MODEL_DEFAULT); }catch(e){} loadEngine(); });
   }
 
   /* ---- Dashboard ---- */
