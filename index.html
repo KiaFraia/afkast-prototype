@@ -424,6 +424,7 @@
   }
 
   /* ---- AI assistant (natural language -> filters, hosted open model, OpenAI-compatible) ---- */
+  var PROXY_URL = ""; // set to your deployed Cloudflare Worker URL to serve all users off one server-side key
   var OAI_BASE_DEFAULT = "https://api.groq.com/openai/v1";
   var OAI_MODEL_DEFAULT = "llama-3.1-8b-instant";
   function oaiBase(){ try{ return localStorage.getItem('afkast_oai_base')||OAI_BASE_DEFAULT; }catch(e){ return OAI_BASE_DEFAULT; } }
@@ -495,6 +496,11 @@
     return {filters:f, reply:"Fortolket som: "+(ch.length?ch.join(" · "):"ingen specifikke kriterier")+".", source:"mock"};
   }
   async function callModel(text){
+    if(PROXY_URL){
+      var pr=await fetch(PROXY_URL,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({text:text}) });
+      if(!pr.ok){ var pe=await pr.text(); throw new Error(pr.status+": "+pe.slice(0,140)); }
+      return await pr.json();
+    }
     var sys='Du er assistent i en dansk ejendomsinvesteringsapp. Oversæt brugerens beskrivelse af ønskede off-market leads til søgefiltre. Svar KUN med JSON på formen {"filters":{"region":"","ownerType":"","minAge":0,"lives":"","minProps":1,"minTenure":0,"maxPrice":0,"type":"","minUnits":1,"minArea":0},"reply":""}. region: Hovedstaden|Midtjylland|Syddanmark|Nordjylland eller tom. ownerType: Privatperson|Selskab eller tom. minAge: ejerens minimumsalder (0=ingen). lives: ja=bor på adressen, nej=fraværende ejer, tom=ligegyldigt. minProps: min antal ejendomme ejeren ejer (1=ingen). minTenure: min ejertid i år (0=ingen). maxPrice: maks seneste handelspris i kroner (0=ingen). type: Enfamiliehus|Flerfamiliehus|Ejerlejlighed eller tom. minUnits: min boligenheder (1=ingen). minArea: min m² (0=ingen). Kriterier der ikke nævnes sættes til 0 eller tom streng. reply: én kort dansk sætning.';
     var body={ model:oaiModel(), temperature:0, max_tokens:400, response_format:{type:"json_object"}, messages:[{role:"system",content:sys},{role:"user",content:text}] };
     var resp=await fetch(oaiBase().replace(/\/+$/,"")+"/chat/completions",{ method:"POST", headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+oaiKey() }, body:JSON.stringify(body) });
@@ -506,7 +512,7 @@
   async function askAssistant(text){
     var box=$("asst-result"); box.style.display="block"; box.innerHTML='<div class="asst-reply">Tænker…</div>';
     try{
-      if(oaiKey()){ var r=await callModel(text); renderAsstResult({filters:(r&&r.filters)||{}, reply:(r&&r.reply)||"", source:"api"}); }
+      if(PROXY_URL || oaiKey()){ var r=await callModel(text); renderAsstResult({filters:(r&&r.filters)||{}, reply:(r&&r.reply)||"", source:"api"}); }
       else { renderAsstResult(mockParse(text)); }
     }catch(err){
       var mk=mockParse(text); mk.reply="Kunne ikke kalde modellen ("+((err&&err.message)||err)+"). Viser en simpel fortolkning i stedet."; renderAsstResult(mk);
