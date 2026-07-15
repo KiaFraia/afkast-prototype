@@ -449,7 +449,7 @@
     if(f.lives==="ja") c.push("Bor på adressen"); if(f.lives==="nej") c.push("Fraværende ejer");
     var pr=clampNum(f.minProps,1,8,1); if(pr>1) c.push(pr+"+ ejendomme");
     var te=clampNum(f.minTenure,0,30,0); if(te>0) c.push("Ejertid "+te+"+ år");
-    var mp=clampNum(f.maxPrice,500000,7000000,7000000); if(mp<7000000) c.push("Maks "+kr(mp));
+    if(Number(f.maxPrice)>0){ var mp=clampNum(f.maxPrice,500000,7000000,7000000); if(mp<7000000) c.push("Maks "+kr(mp)); }
     if(f.type) c.push(f.type);
     var un=clampNum(f.minUnits,1,10,1); if(un>1) c.push(un+"+ enheder");
     var ar=clampNum(f.minArea,0,300,0); if(ar>0) c.push(ar+"+ m²");
@@ -464,7 +464,7 @@
     $("f-lives").value = (f.lives==="ja"||f.lives==="nej") ? f.lives : "";
     $("f-props").value = clampNum(f.minProps,1,8,1);
     $("f-tenure").value = clampNum(f.minTenure,0,30,0);
-    $("f-price").value = clampNum(f.maxPrice,500000,7000000,7000000);
+    $("f-price").value = (Number(f.maxPrice)>0) ? clampNum(f.maxPrice,500000,7000000,7000000) : 7000000;
     $("f-type").value = typs.indexOf(f.type)>-1 ? f.type : "";
     $("f-units").value = clampNum(f.minUnits,1,10,1);
     $("f-area").value = clampNum(f.minArea,0,300,0);
