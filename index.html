@@ -64,7 +64,8 @@
   .dot{width:10px; height:10px; border-radius:50%; display:inline-block;}
   .count{font-size:13px; color:var(--muted); margin:16px 0 12px;}
   .deal-list{display:flex; flex-direction:column; gap:12px;}
-  .deal{display:flex; gap:16px; padding:16px 18px; align-items:center;}
+  .deal{display:flex; gap:16px; padding:16px 18px; align-items:center; cursor:pointer; transition:.12s;}
+  .deal:hover{border-color:var(--blue);}
   .deal .score{width:58px; text-align:center; flex-shrink:0;}
   .deal .score .n{font-size:24px; font-weight:600; line-height:1;}
   .deal .score .l{font-size:11px; color:var(--faint); margin-top:2px;}
@@ -101,7 +102,8 @@
   .col{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:10px; min-height:120px;}
   .col h3{font-size:12px; font-weight:600; margin:0 0 10px; color:var(--muted); display:flex; justify-content:space-between; gap:4px;}
   .col h3 .n{background:var(--bg2); border-radius:999px; padding:1px 7px; font-size:11px;}
-  .pcard{background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px; margin-bottom:9px;}
+  .pcard{background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px; margin-bottom:9px; cursor:pointer;}
+  .pcard:hover{border-color:var(--blue);}
   .pcard .pa{font-weight:600; font-size:13px; margin-bottom:3px;}
   .pcard .pm{font-size:12px; color:var(--muted); margin-bottom:7px;}
   .pcard textarea{width:100%; font:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:6px; resize:vertical; min-height:32px; background:#fff;}
@@ -111,7 +113,8 @@
   .segbtn button{border:none; background:transparent; padding:8px 16px; font-weight:500; color:var(--muted); cursor:pointer;}
   .segbtn button.active{background:var(--blue-bg); color:var(--blue-dark);}
   .pipe-list{display:flex; flex-direction:column; gap:10px;}
-  .prow{display:flex; align-items:center; gap:16px; padding:14px 18px;}
+  .prow{display:flex; align-items:center; gap:16px; padding:14px 18px; cursor:pointer;}
+  .prow:hover{border-color:var(--blue);}
   .prow .sc{width:44px; text-align:center; font-weight:600; font-size:20px; flex-shrink:0;}
   .prow .pmain{flex:1; min-width:0;}
   .prow .pa2{font-weight:600; font-size:15px;}
@@ -146,7 +149,6 @@
   <div class="logo"><span class="mark">A</span>Afkast <span class="tag">arbejdstitel</span></div>
   <div class="tabs">
     <button class="tab active" data-view="find">Find deals</button>
-    <button class="tab" data-view="detail">Business case</button>
     <button class="tab" data-view="pipeline">Pipeline <span id="pipe-n"></span></button>
   </div>
   <span class="spacer"></span>
@@ -198,7 +200,7 @@
   </section>
 
   <section class="view" id="view-detail">
-    <button class="back" onclick="showView('find')">‹ Tilbage til deals</button>
+    <button class="back" onclick="backFromDetail()">‹ Tilbage</button>
     <div id="detail-body"></div>
   </section>
 
@@ -301,11 +303,7 @@
   }
   window.showView = showView;
   document.querySelectorAll(".tab").forEach(function(t){
-    t.addEventListener("click", function(){
-      var v=t.getAttribute("data-view");
-      if(v==="detail"){ openDetail(current?current.id:DATA[0].id); }
-      else showView(v);
-    });
+    t.addEventListener("click", function(){ showView(t.getAttribute("data-view")); });
   });
 
   /* ---- Map ---- */
@@ -367,30 +365,26 @@
     }).map(function(p){ return {p:p, s:leadScore(p)}; })
       .sort(function(a,b){ return b.s.score-a.s.score; });
 
-    $("deal-count").textContent = list.length + " leads — sorteret efter lead score";
+    $("deal-count").textContent = list.length + " leads";
     renderMarkers(list);
     var box=$("deal-list"); box.innerHTML="";
     if(!list.length){ box.innerHTML='<div class="card"><div class="empty">Ingen leads matcher filtrene.</div></div>'; return; }
     list.forEach(function(o){
-      var d=o.p, tv=tier(o.s.score);
+      var d=o.p;
       var el=document.createElement("div"); el.className="card deal";
       el.innerHTML =
-        '<div class="score"><div class="n" style="color:'+tv[1]+'">'+o.s.score+'</div><div class="l">'+tv[2]+'</div></div>'+
         '<div class="main">'+
           '<div class="addr">'+d.addr+'</div>'+
-          '<div class="meta">'+d.city+' · '+d.region+' · '+d.type+' · '+d.area+' m² · '+d.units+' enhed'+(d.units>1?'er':'')+' '+energyHtml(d.energy)+'</div>'+
-          '<div class="owner">'+d.ownerName+' <span style="color:var(--muted)">('+d.ownerType+(d.ownerAge?', '+d.ownerAge+' år':'')+') · '+d.ownerPropCount+' ejendom'+(d.ownerPropCount>1?'me':'')+' · seneste handel '+d.saleYear+'</span></div>'+
-          '<div class="chips">'+o.s.reasons.map(function(x){return '<span class="chip'+(x.hot?' hot':'')+'">'+x.t+'</span>';}).join("")+'</div>'+
+          '<div class="meta">'+d.city+' · '+d.type+' · '+d.area+' m² · '+d.units+' enhed'+(d.units>1?'er':'')+'</div>'+
+          '<div class="owner">'+d.ownerName+' <span style="color:var(--muted)">· '+d.ownerPropCount+' ejendom'+(d.ownerPropCount>1?'me':'')+' · seneste handel '+d.saleYear+' · '+kr(d.lastSalePrice)+'</span></div>'+
         '</div>'+
         '<div class="acts">'+
           '<button class="btn sm" data-gem="'+d.id+'">'+(inPipe(d.id)?'✓ Gemt':'Gem som lead')+'</button>'+
-          '<button class="btn ghost sm" data-biz="'+d.id+'">Business case</button>'+
         '</div>';
-      el.addEventListener("click", function(e){ if(!e.target.closest("button")) focusMap(d.id); });
+      el.addEventListener("click", function(e){ if(!e.target.closest("button")) openDetail(d.id); });
       box.appendChild(el);
     });
     box.querySelectorAll("[data-gem]").forEach(function(b){ b.addEventListener("click", function(){ addPipe(+b.getAttribute("data-gem")); renderDeals(); }); });
-    box.querySelectorAll("[data-biz]").forEach(function(b){ b.addEventListener("click", function(){ openDetail(+b.getAttribute("data-biz")); }); });
   }
 
   /* ---- Dashboard ---- */
@@ -407,8 +401,11 @@
   function dcard(k,v,s){ return '<div class="dcard"><div class="k">'+k+'</div><div class="v">'+v+'</div><div class="s">'+s+'</div></div>'; }
 
   /* ---- Business case (detail) — unchanged evaluation page ---- */
-  var current=null;
+  var current=null, detailReturn="find";
+  window.backFromDetail=function(){ showView(detailReturn); };
   function openDetail(id){
+    var av=document.querySelector(".view.active");
+    if(av && av.id!=="view-detail") detailReturn=av.id.replace("view-","");
     current=byId(id); var d=current;
     $("detail-body").innerHTML =
       '<div class="grid2">'+
@@ -463,6 +460,7 @@
         '<div class="pmain"><div class="pa2">'+d.addr+'</div><div class="pm2">'+d.city+' · '+d.type+' · '+d.ownerName+' ('+d.ownerType+(d.ownerAge?', '+d.ownerAge+' år':'')+')</div></div>'+
         '<select data-stage2="'+p.id+'">'+STAGES.map(function(s){return '<option'+(s===p.stage?' selected':'')+'>'+s+'</option>';}).join("")+'</select>'+
         '<button class="rm" title="Fjern" data-rm2="'+p.id+'">×</button>';
+      el.addEventListener("click", function(e){ if(!e.target.closest("select,button")) openDetail(p.id); });
       box.appendChild(el);
     });
     box.querySelectorAll("[data-stage2]").forEach(function(s){ s.addEventListener("change", function(){ pipeline.filter(function(x){return x.id==+s.getAttribute("data-stage2");})[0].stage=s.value; savePipe(); }); });
@@ -483,6 +481,7 @@
           '<div class="pm">'+d.city+' · score <b style="color:'+tv[1]+'">'+sc+'</b> · '+d.ownerName+'</div>'+
           '<textarea placeholder="Noter, kontaktperson, tlf…" data-note="'+p.id+'">'+(p.note||"")+'</textarea>'+
           '<select data-stage="'+p.id+'">'+STAGES.map(function(s){return '<option'+(s===p.stage?' selected':'')+'>'+s+'</option>';}).join("")+'</select>';
+        c.addEventListener("click", function(e){ if(!e.target.closest("textarea,select,button")) openDetail(p.id); });
         col.appendChild(c);
       });
       board.appendChild(col);
