@@ -3,10 +3,12 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Afkast — find, analysér og hold styr på dine ejendomshandler</title>
+<title>Afkast — find off-market leads i danske ejendomme</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   :root{
     --blue:#1763d1; --blue-dark:#0c447c; --blue-bg:#eaf1fc;
@@ -20,9 +22,9 @@
   *{box-sizing:border-box;}
   body{margin:0; font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg2); line-height:1.55; -webkit-font-smoothing:antialiased;}
   button{font:inherit;}
-  .wrap{max-width:1080px; margin:0 auto; padding:0 24px;}
-  nav{display:flex; align-items:center; gap:18px; padding:14px 0; border-bottom:1px solid var(--line); background:var(--bg); position:sticky; top:0; z-index:20;}
-  nav .inner{max-width:1080px; margin:0 auto; padding:0 24px; width:100%; display:flex; align-items:center; gap:18px;}
+  .wrap{max-width:1160px; margin:0 auto; padding:0 24px;}
+  nav .inner{max-width:1160px; margin:0 auto; padding:0 24px; width:100%; display:flex; align-items:center; gap:18px;}
+  nav{border-bottom:1px solid var(--line); background:var(--bg); position:sticky; top:0; z-index:1000; padding:14px 0;}
   .logo{display:flex; align-items:center; gap:10px; font-weight:600; font-size:18px;}
   .logo .mark{width:30px; height:30px; border-radius:8px; background:var(--blue); color:#fff; display:flex; align-items:center; justify-content:center; font-size:17px;}
   .logo .tag{font-size:11px; color:var(--faint); font-weight:400;}
@@ -36,33 +38,45 @@
   .btn.ghost{background:transparent; color:var(--blue);}
   .btn.ghost:hover{background:var(--blue-bg);}
   .btn.sm{padding:6px 12px; font-size:14px;}
-  .view{display:none; padding:26px 0 60px;}
+  .view{display:none; padding:22px 0 60px;}
   .view.active{display:block;}
   .vhead h1{font-size:26px; font-weight:600; margin:0 0 4px; letter-spacing:-0.01em;}
-  .vhead p{margin:0 0 22px; color:var(--muted); font-size:15px;}
+  .vhead p{margin:0 0 20px; color:var(--muted); font-size:15px;}
   .card{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); box-shadow:0 1px 3px rgba(15,23,42,.04);}
-  .energy{display:inline-block; min-width:22px; text-align:center; font-weight:600; font-size:12px; padding:2px 8px; border-radius:6px;}
-  .badge{display:inline-flex; align-items:center; gap:5px; font-weight:600; font-size:13px; padding:3px 9px; border-radius:7px;}
-  /* find deals */
-  .filters{display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; padding:18px 20px; margin-bottom:18px;}
-  .filters .f{display:flex; flex-direction:column; gap:5px;}
-  .filters label{font-size:12px; color:var(--muted);}
-  .filters select,.filters input[type=text]{font:inherit; padding:9px 12px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2); min-width:150px;}
-  .filters .rng{min-width:170px;}
-  .rng .top{display:flex; justify-content:space-between; font-size:12px; color:var(--muted);}
+  .energy{display:inline-block; min-width:20px; text-align:center; font-weight:600; font-size:11px; padding:1px 7px; border-radius:6px;}
   input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:5px; border-radius:3px; background:var(--line); outline:none; margin-top:6px;}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--blue); cursor:pointer; border:3px solid #fff; box-shadow:0 1px 4px rgba(15,23,42,.25);}
+  /* finder layout */
+  .finder{display:grid; grid-template-columns:290px 1fr; gap:20px; align-items:start;}
+  .fpanel{padding:18px 20px; position:sticky; top:78px;}
+  .fsection{margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid var(--line);}
+  .fsection:last-child{border:none; margin:0; padding:0;}
+  .fsection h4{margin:0 0 12px; font-size:12px; font-weight:600; color:var(--faint); text-transform:uppercase; letter-spacing:.04em;}
+  .fld{margin-bottom:12px;}
+  .fld label{display:block; font-size:13px; color:var(--muted); margin-bottom:4px;}
+  .fld .rowout{display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:2px;}
+  .fld .rowout b{color:var(--ink); font-weight:600;}
+  .fld select{width:100%; font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg2);}
+  .fmain{min-width:0;}
+  .map{height:380px; border-radius:var(--radius); border:1px solid var(--line); z-index:1;}
+  .legend{display:flex; gap:16px; font-size:12.5px; color:var(--muted); margin:10px 2px 0;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .dot{width:10px; height:10px; border-radius:50%; display:inline-block;}
+  .count{font-size:13px; color:var(--muted); margin:16px 0 12px;}
   .deal-list{display:flex; flex-direction:column; gap:12px;}
-  .deal{display:flex; align-items:center; gap:18px; padding:16px 20px; cursor:pointer; transition:.12s;}
-  .deal:hover{border-color:var(--blue); box-shadow:0 2px 10px rgba(23,99,209,.08);}
+  .deal{display:flex; gap:16px; padding:16px 18px; align-items:center;}
+  .deal .score{width:58px; text-align:center; flex-shrink:0;}
+  .deal .score .n{font-size:24px; font-weight:600; line-height:1;}
+  .deal .score .l{font-size:11px; color:var(--faint); margin-top:2px;}
   .deal .main{flex:1; min-width:0;}
   .deal .addr{font-weight:600; font-size:16px;}
-  .deal .meta{font-size:13.5px; color:var(--muted); margin-top:3px;}
-  .deal .nums{display:flex; gap:26px; text-align:right;}
-  .deal .nums .k{font-size:12px; color:var(--faint);}
-  .deal .nums .v{font-size:17px; font-weight:600; margin-top:2px;}
-  .count{font-size:13px; color:var(--muted); margin:0 0 12px;}
-  /* detail */
+  .deal .meta{font-size:13px; color:var(--muted); margin:2px 0 8px;}
+  .deal .owner{font-size:13.5px;}
+  .chips{display:flex; flex-wrap:wrap; gap:5px; margin-top:8px;}
+  .chip{font-size:12px; padding:2px 9px; border-radius:999px; background:var(--bg2); color:var(--muted); border:1px solid var(--line);}
+  .chip.hot{background:var(--red-bg); color:var(--red); border-color:transparent;}
+  .deal .acts{display:flex; flex-direction:column; gap:6px; flex-shrink:0;}
+  /* detail (business case) */
   .back{background:none; border:none; color:var(--blue); cursor:pointer; font-weight:500; padding:0; margin-bottom:14px; display:inline-flex; gap:6px; align-items:center;}
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
   .facts{padding:20px;}
@@ -83,32 +97,35 @@
   .subline{display:flex; flex-wrap:wrap; gap:6px 22px; font-size:13px; color:var(--muted); margin-top:16px; padding-top:14px; border-top:1px solid var(--line);}
   .subline b{color:var(--ink);}
   /* pipeline */
-  .board{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;}
-  .col{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:12px; min-height:120px;}
-  .col h3{font-size:13px; font-weight:600; margin:0 0 12px; color:var(--muted); display:flex; justify-content:space-between;}
-  .col h3 .n{background:var(--bg2); border-radius:999px; padding:1px 8px; font-size:12px;}
-  .pcard{background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius-sm); padding:12px; margin-bottom:10px;}
-  .pcard .pa{font-weight:600; font-size:14px; margin-bottom:3px;}
-  .pcard .pm{font-size:12.5px; color:var(--muted); margin-bottom:8px;}
-  .pcard textarea{width:100%; font:inherit; font-size:12.5px; border:1px solid var(--line); border-radius:8px; padding:7px; resize:vertical; min-height:34px; background:#fff;}
-  .pcard .row{display:flex; gap:6px; margin-top:8px;}
-  .pcard select{flex:1; font:inherit; font-size:12.5px; padding:6px; border:1px solid var(--line); border-radius:8px; background:#fff;}
-  .pcard .rm{border:none; background:none; color:var(--faint); cursor:pointer; font-size:16px;}
+  .board{display:grid; grid-template-columns:repeat(6,1fr); gap:12px;}
+  .col{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:10px; min-height:120px;}
+  .col h3{font-size:12px; font-weight:600; margin:0 0 10px; color:var(--muted); display:flex; justify-content:space-between; gap:4px;}
+  .col h3 .n{background:var(--bg2); border-radius:999px; padding:1px 7px; font-size:11px;}
+  .pcard{background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px; margin-bottom:9px;}
+  .pcard .pa{font-weight:600; font-size:13px; margin-bottom:3px;}
+  .pcard .pm{font-size:12px; color:var(--muted); margin-bottom:7px;}
+  .pcard textarea{width:100%; font:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:6px; resize:vertical; min-height:32px; background:#fff;}
+  .pcard select{width:100%; font:inherit; font-size:12px; padding:5px; border:1px solid var(--line); border-radius:8px; background:#fff; margin-top:7px;}
+  .pcard .rm{border:none; background:none; color:var(--faint); cursor:pointer; font-size:15px;}
   .empty{color:var(--faint); font-size:13px; text-align:center; padding:30px 0;}
-  /* modal */
-  .overlay{display:none; position:fixed; inset:0; background:rgba(15,23,42,.5); z-index:50; align-items:center; justify-content:center; padding:20px;}
+  /* dashboard strip */
+  .dash{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px;}
+  .dcard{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px;}
+  .dcard .k{font-size:12.5px; color:var(--muted);}
+  .dcard .v{font-size:22px; font-weight:600; margin-top:4px;}
+  .dcard .s{font-size:12px; color:var(--faint); margin-top:2px;}
+  /* modal / toast */
+  .overlay{display:none; position:fixed; inset:0; background:rgba(15,23,42,.5); z-index:2000; align-items:center; justify-content:center; padding:20px;}
   .overlay.open{display:flex;}
   .modal{background:#fff; border-radius:var(--radius); padding:30px; max-width:420px; width:100%; text-align:center;}
-  .modal h2{margin:0 0 8px; font-size:22px;}
-  .modal p{margin:0 0 18px; color:var(--muted);}
-  .modal form{display:flex; gap:8px;}
-  .modal input{flex:1; font:inherit; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius-sm);}
-  .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:11px 20px; border-radius:999px; font-size:14px; opacity:0; transition:.25s; z-index:60;}
+  .modal h2{margin:0 0 8px; font-size:22px;} .modal p{margin:0 0 18px; color:var(--muted);}
+  .modal form{display:flex; gap:8px;} .modal input{flex:1; font:inherit; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius-sm);}
+  .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:11px 20px; border-radius:999px; font-size:14px; opacity:0; transition:.25s; z-index:3000; pointer-events:none;}
   .toast.show{opacity:1;}
-  @media(max-width:820px){
-    .grid2{grid-template-columns:1fr;} .board{grid-template-columns:1fr 1fr;}
-    .deal{flex-direction:column; align-items:flex-start; gap:10px;} .deal .nums{gap:20px;}
-    .tabs{display:none;}
+  @media(max-width:900px){
+    .finder{grid-template-columns:1fr;} .fpanel{position:static;}
+    .grid2{grid-template-columns:1fr;} .board{grid-template-columns:1fr 1fr;} .dash{grid-template-columns:1fr 1fr;}
+    .deal{flex-wrap:wrap;} .tabs{display:none;}
   }
 </style>
 </head>
@@ -118,8 +135,8 @@
   <div class="logo"><span class="mark">A</span>Afkast <span class="tag">arbejdstitel</span></div>
   <div class="tabs">
     <button class="tab active" data-view="find">Find deals</button>
-    <button class="tab" data-view="detail">Overblik</button>
-    <button class="tab" data-view="pipeline">Min pipeline <span id="pipe-n"></span></button>
+    <button class="tab" data-view="detail">Business case</button>
+    <button class="tab" data-view="pipeline">Pipeline <span id="pipe-n"></span></button>
   </div>
   <span class="spacer"></span>
   <button class="btn sm" onclick="openWait()">Få tidlig adgang</button>
@@ -128,25 +145,45 @@
 <div class="wrap">
 
   <section class="view active" id="view-find">
-    <div class="vhead"><h1>Find deals</h1><p>Screen markedet og find ejendomme med det bedste afkast — på tværs af hele Danmark.</p></div>
-    <div class="card filters">
-      <div class="f"><label>By</label>
-        <select id="f-city"><option value="">Alle byer</option></select>
+    <div class="vhead"><h1>Find deals</h1><p>Find off-market leads — filtrér på ejer- og ejendomsdata, og find motiverede sælgere på kortet. Rangeret efter lead score.</p></div>
+
+    <div class="dash" id="dash"></div>
+
+    <div class="finder">
+      <div class="card fpanel">
+        <div class="fsection">
+          <h4>Lokation</h4>
+          <div class="fld"><label>Region</label><select id="f-region"><option value="">Alle regioner</option></select></div>
+        </div>
+        <div class="fsection">
+          <h4>Ejerskab</h4>
+          <div class="fld"><label>Ejerskabstype</label><select id="f-ownertype"><option value="">Alle</option><option>Privatperson</option><option>Selskab</option></select></div>
+          <div class="fld"><div class="rowout"><span>Ejers alder (min.)</span><b id="o-age">fra</b></div><input id="f-age" type="range" min="0" max="90" step="1" value="0"></div>
+          <div class="fld"><label>Bor ejer på adressen?</label><select id="f-lives"><option value="">Alle</option><option value="ja">Ja</option><option value="nej">Nej</option></select></div>
+          <div class="fld"><div class="rowout"><span>Antal ejendomme (min.)</span><b id="o-props">1</b></div><input id="f-props" type="range" min="1" max="8" step="1" value="1"></div>
+          <div class="fld"><div class="rowout"><span>Ejertid (min. år)</span><b id="o-tenure">0</b></div><input id="f-tenure" type="range" min="0" max="30" step="1" value="0"></div>
+          <div class="fld"><div class="rowout"><span>Seneste handelspris (maks.)</span><b id="o-price">–</b></div><input id="f-price" type="range" min="500000" max="7000000" step="100000" value="7000000"></div>
+        </div>
+        <div class="fsection">
+          <h4>Ejendom</h4>
+          <div class="fld"><label>Ejendomstype</label><select id="f-type"><option value="">Alle typer</option><option>Enfamiliehus</option><option>Flerfamiliehus</option><option>Ejerlejlighed</option></select></div>
+          <div class="fld"><div class="rowout"><span>Antal boligenheder (min.)</span><b id="o-units">1</b></div><input id="f-units" type="range" min="1" max="10" step="1" value="1"></div>
+          <div class="fld"><div class="rowout"><span>Beboelsesareal (min. m²)</span><b id="o-area">0</b></div><input id="f-area" type="range" min="0" max="300" step="10" value="0"></div>
+        </div>
+        <button class="btn ghost sm" style="width:100%; margin-top:14px;" id="f-reset">Nulstil filtre</button>
       </div>
-      <div class="f"><label>Type</label>
-        <select id="f-type"><option value="">Alle typer</option></select>
-      </div>
-      <div class="f rng"><label>Maks. pris</label>
-        <div class="top"><span>0</span><span id="f-price-out"></span></div>
-        <input id="f-price" type="range" min="1000000" max="7000000" step="100000">
-      </div>
-      <div class="f rng"><label>Min. bruttoafkast</label>
-        <div class="top"><span>0 %</span><span id="f-yield-out"></span></div>
-        <input id="f-yield" type="range" min="0" max="9" step="0.5">
+
+      <div class="fmain">
+        <div id="map" class="map"></div>
+        <div class="legend">
+          <span><span class="dot" style="background:#dc2626;"></span>Hot lead (60+)</span>
+          <span><span class="dot" style="background:#b9770f;"></span>Warm (35–59)</span>
+          <span><span class="dot" style="background:#1763d1;"></span>Kold (&lt;35)</span>
+        </div>
+        <p class="count" id="deal-count"></p>
+        <div class="deal-list" id="deal-list"></div>
       </div>
     </div>
-    <p class="count" id="deal-count"></p>
-    <div class="deal-list" id="deal-list"></div>
   </section>
 
   <section class="view" id="view-detail">
@@ -155,152 +192,222 @@
   </section>
 
   <section class="view" id="view-pipeline">
-    <div class="vhead"><h1>Min pipeline</h1><p>Hold styr på de handler du arbejder med — status, noter og afkast, samlet ét sted.</p></div>
+    <div class="vhead"><h1>Pipeline</h1><p>Hold styr på dine leads — outreach-status, noter og kontakt, samlet ét sted.</p></div>
     <div class="board" id="board"></div>
   </section>
 
 </div>
 
-<div class="overlay" id="wait">
-  <div class="modal">
-    <h2>Vil du være blandt de første?</h2>
-    <p>Skriv dig op, så får du adgang når vi åbner — og er med til at forme produktet.</p>
-    <form id="wform"><input type="email" id="email" placeholder="din@email.dk" required><button class="btn" type="submit">Skriv mig op</button></form>
-    <p style="margin-top:14px; font-size:12.5px; color:var(--faint);">Prototype — data er illustrativ.</p>
-  </div>
-</div>
+<div class="overlay" id="wait"><div class="modal">
+  <h2>Vil du være blandt de første?</h2>
+  <p>Skriv dig op, så får du adgang når vi åbner — og er med til at forme produktet.</p>
+  <form id="wform"><input type="email" id="email" placeholder="din@email.dk" required><button class="btn" type="submit">Skriv mig op</button></form>
+  <p style="margin-top:14px; font-size:12.5px; color:var(--faint);">Prototype — data er illustrativ.</p>
+</div></div>
 
 <div class="toast" id="toast"></div>
 
 <script>
 (function(){
+  var YEAR = 2026;
   var DATA = [
-    {id:1, addr:"Nørrebrogade 155, 2. tv", city:"København", type:"Ejerlejlighed", area:68, rooms:2, year:1903, energy:"D", vur:2800000, tax:4200, sold:"2019 · 2.650.000 kr", zone:"Boligområde", price:3295000, rent:11500, cost:42000},
-    {id:2, addr:"Vesterbrogade 89, 4. th", city:"København", type:"Ejerlejlighed", area:54, rooms:2, year:1899, energy:"E", vur:2350000, tax:3600, sold:"2021 · 2.795.000 kr", zone:"Bymidte", price:2895000, rent:9800, cost:36000},
-    {id:3, addr:"Silkeborgvej 230", city:"Aarhus", type:"Villa", area:142, rooms:5, year:1968, energy:"C", vur:3400000, tax:11800, sold:"2016 · 2.950.000 kr", zone:"Åben-lav bolig", price:4150000, rent:15500, cost:58000},
-    {id:4, addr:"Thorsgade 12, 1. tv", city:"Odense", type:"Ejerlejlighed", area:78, rooms:3, year:1932, energy:"D", vur:1450000, tax:5100, sold:"2020 · 1.690.000 kr", zone:"Boligområde", price:1995000, rent:8900, cost:31000},
-    {id:5, addr:"Danmarksgade 60", city:"Aalborg", type:"Ejerlejlighed", area:84, rooms:3, year:1925, energy:"D", vur:1350000, tax:4800, sold:"2018 · 1.420.000 kr", zone:"Bymidte", price:1795000, rent:9200, cost:30000},
-    {id:6, addr:"Skolegade 18", city:"Esbjerg", type:"Udlejningsejendom", area:180, rooms:6, year:1955, energy:"E", vur:1600000, tax:7200, sold:"2017 · 1.750.000 kr", zone:"Boligområde", price:2250000, rent:16500, cost:62000},
-    {id:7, addr:"Jernbanegade 7", city:"Horsens", type:"Ejerlejlighed", area:92, rooms:3, year:1940, energy:"D", vur:1100000, tax:4200, sold:"2019 · 1.260.000 kr", zone:"Bymidte", price:1595000, rent:8800, cost:28000},
-    {id:8, addr:"Søndergade 44", city:"Randers", type:"Villa", area:130, rooms:4, year:1972, energy:"C", vur:1500000, tax:6800, sold:"2015 · 1.380.000 kr", zone:"Åben-lav bolig", price:1995000, rent:11000, cost:40000},
-    {id:9, addr:"Strandvejen 210", city:"Hellerup", type:"Ejerlejlighed", area:96, rooms:3, year:1932, energy:"C", vur:5200000, tax:14000, sold:"2020 · 5.900.000 kr", zone:"Boligområde", price:6450000, rent:18500, cost:60000},
-    {id:10, addr:"Frederiksgade 9", city:"Vejle", type:"Ejerlejlighed", area:70, rooms:2, year:1928, energy:"D", vur:1200000, tax:4000, sold:"2021 · 1.490.000 kr", zone:"Bymidte", price:1695000, rent:8200, cost:26000},
-    {id:11, addr:"Vestergade 25", city:"Svendborg", type:"Udlejningsejendom", area:240, rooms:9, year:1930, energy:"E", vur:1900000, tax:8400, sold:"2016 · 2.050.000 kr", zone:"Bymidte", price:2795000, rent:21000, cost:78000},
-    {id:12, addr:"Ny Munkegade 5, 3. th", city:"Aarhus", type:"Ejerlejlighed", area:60, rooms:2, year:1910, energy:"D", vur:2100000, tax:5200, sold:"2022 · 2.450.000 kr", zone:"Bymidte", price:2595000, rent:10500, cost:32000}
+    {id:1, addr:"Nørrebrogade 155, 2. tv", city:"København", region:"Hovedstaden", lat:55.6971, lng:12.5522, type:"Ejerlejlighed", area:68, rooms:2, units:1, year:1903, energy:"D", vur:2800000, tax:4200, saleYear:2003, lastSalePrice:1200000, zone:"Boligområde", price:3295000, rent:11500, cost:42000, ownerName:"Lis Frølich Hansen", ownerType:"Privatperson", ownerAge:78, ownerLivesHere:false, ownerPropCount:4},
+    {id:2, addr:"Vesterbrogade 89, 4. th", city:"København", region:"Hovedstaden", lat:55.6690, lng:12.5460, type:"Ejerlejlighed", area:54, rooms:2, units:1, year:1899, energy:"E", vur:2350000, tax:3600, saleYear:2021, lastSalePrice:2795000, zone:"Bymidte", price:2895000, rent:9800, cost:36000, ownerName:"Martin Bech", ownerType:"Privatperson", ownerAge:41, ownerLivesHere:true, ownerPropCount:1},
+    {id:3, addr:"Silkeborgvej 230", city:"Aarhus", region:"Midtjylland", lat:56.1520, lng:10.1760, type:"Enfamiliehus", area:142, rooms:5, units:1, year:1968, energy:"C", vur:3400000, tax:11800, saleYear:2008, lastSalePrice:1900000, zone:"Åben-lav bolig", price:4150000, rent:15500, cost:58000, ownerName:"Jørgen Dahl", ownerType:"Privatperson", ownerAge:72, ownerLivesHere:true, ownerPropCount:1},
+    {id:4, addr:"Thorsgade 12, 1. tv", city:"Odense", region:"Syddanmark", lat:55.3980, lng:10.3880, type:"Ejerlejlighed", area:78, rooms:3, units:1, year:1932, energy:"D", vur:1450000, tax:5100, saleYear:2020, lastSalePrice:1690000, zone:"Boligområde", price:1995000, rent:8900, cost:31000, ownerName:"Fyn Bolig ApS", ownerType:"Selskab", ownerAge:null, ownerLivesHere:false, ownerPropCount:6},
+    {id:5, addr:"Danmarksgade 60", city:"Aalborg", region:"Nordjylland", lat:57.0450, lng:9.9210, type:"Flerfamiliehus", area:320, rooms:12, units:4, year:1925, energy:"D", vur:2600000, tax:12000, saleYear:2001, lastSalePrice:1600000, zone:"Bymidte", price:3200000, rent:31000, cost:90000, ownerName:"Karen Møller", ownerType:"Privatperson", ownerAge:69, ownerLivesHere:false, ownerPropCount:3},
+    {id:6, addr:"Skolegade 18", city:"Esbjerg", region:"Syddanmark", lat:55.4670, lng:8.4520, type:"Flerfamiliehus", area:180, rooms:8, units:2, year:1955, energy:"E", vur:1600000, tax:7200, saleYear:2005, lastSalePrice:1100000, zone:"Boligområde", price:2250000, rent:16500, cost:62000, ownerName:"Preben Sørensen", ownerType:"Privatperson", ownerAge:83, ownerLivesHere:false, ownerPropCount:5},
+    {id:7, addr:"Jernbanegade 7", city:"Horsens", region:"Midtjylland", lat:55.8610, lng:9.8500, type:"Ejerlejlighed", area:92, rooms:3, units:1, year:1940, energy:"D", vur:1100000, tax:4200, saleYear:2019, lastSalePrice:1260000, zone:"Bymidte", price:1595000, rent:8800, cost:28000, ownerName:"Anne Larsen", ownerType:"Privatperson", ownerAge:55, ownerLivesHere:true, ownerPropCount:2},
+    {id:8, addr:"Søndergade 44", city:"Randers", region:"Midtjylland", lat:56.4610, lng:10.0360, type:"Enfamiliehus", area:130, rooms:4, units:1, year:1972, energy:"C", vur:1500000, tax:6800, saleYear:2015, lastSalePrice:1380000, zone:"Åben-lav bolig", price:1995000, rent:11000, cost:40000, ownerName:"Bent Nielsen", ownerType:"Privatperson", ownerAge:74, ownerLivesHere:true, ownerPropCount:1},
+    {id:9, addr:"Strandvejen 210", city:"Hellerup", region:"Hovedstaden", lat:55.7330, lng:12.5730, type:"Ejerlejlighed", area:96, rooms:3, units:1, year:1932, energy:"C", vur:5200000, tax:14000, saleYear:2020, lastSalePrice:5900000, zone:"Boligområde", price:6450000, rent:18500, cost:60000, ownerName:"Sofie Berg", ownerType:"Privatperson", ownerAge:48, ownerLivesHere:true, ownerPropCount:1},
+    {id:10, addr:"Frederiksgade 9", city:"Vejle", region:"Syddanmark", lat:55.7090, lng:9.5350, type:"Ejerlejlighed", area:70, rooms:2, units:1, year:1928, energy:"D", vur:1200000, tax:4000, saleYear:2004, lastSalePrice:780000, zone:"Bymidte", price:1695000, rent:8200, cost:26000, ownerName:"Inger Kjær", ownerType:"Privatperson", ownerAge:76, ownerLivesHere:false, ownerPropCount:2},
+    {id:11, addr:"Vestergade 25", city:"Svendborg", region:"Syddanmark", lat:55.0600, lng:10.6080, type:"Flerfamiliehus", area:240, rooms:9, units:3, year:1930, energy:"E", vur:1900000, tax:8400, saleYear:2016, lastSalePrice:2050000, zone:"Bymidte", price:2795000, rent:21000, cost:78000, ownerName:"Sydfyn Ejendomme A/S", ownerType:"Selskab", ownerAge:null, ownerLivesHere:false, ownerPropCount:8},
+    {id:12, addr:"Ny Munkegade 5, 3. th", city:"Aarhus", region:"Midtjylland", lat:56.1630, lng:10.2030, type:"Ejerlejlighed", area:60, rooms:2, units:1, year:1910, energy:"D", vur:2100000, tax:5200, saleYear:2009, lastSalePrice:1400000, zone:"Bymidte", price:2595000, rent:10500, cost:32000, ownerName:"Hanne Poulsen", ownerType:"Privatperson", ownerAge:71, ownerLivesHere:false, ownerPropCount:1}
   ];
-  var STAGES = ["Watchlist","Undersøger","Budgivning","Afsluttet"];
+  var STAGES = ["Ikke kontaktet","Kontaktet","Dialog i gang","Møde afholdt","Interessant","Afsluttet"];
   var nf = new Intl.NumberFormat('da-DK');
   function kr(n){ return nf.format(Math.round(n)) + " kr"; }
   function pc(n){ return (Math.round(n*10)/10).toFixed(1).replace('.',',') + " %"; }
   function $(id){ return document.getElementById(id); }
   function byId(id){ return DATA.filter(function(d){return d.id===id;})[0]; }
-  function bafk(p){ return p.rent*12/p.price*100; }
-  function yieldColor(y){ return y>=6 ? ["var(--green-bg)","var(--green)"] : y>=4.5 ? ["var(--amber-bg)","var(--amber)"] : ["var(--bg2)","var(--muted)"]; }
+  function tenure(p){ return YEAR - p.saleYear; }
   function energyHtml(l){
     var m={A:["#e6f7f0","#0f6e56"],B:["#e6f7f0","#0f6e56"],C:["#fdf2da","#854f0b"],D:["#fdf2da","#854f0b"],E:["#fdeaea","#a32d2d"],F:["#fdeaea","#a32d2d"],G:["#fdeaea","#a32d2d"]};
     var c=m[l]||["#f1efe8","#444441"]; return '<span class="energy" style="background:'+c[0]+';color:'+c[1]+'">'+l+'</span>';
   }
 
+  /* ---- Lead score (partner's weighting) ---- */
+  function leadScore(p){
+    var s=0, r=[];
+    if(p.ownerType==="Privatperson" && p.ownerAge!==null && p.ownerAge>70){ s+=20; r.push({t:p.ownerAge+" år", hot:true}); }
+    if(tenure(p)>15){ s+=20; r.push({t:"Ejertid "+tenure(p)+" år", hot:true}); }
+    if(!p.ownerLivesHere){ s+=15; r.push({t:"Fraværende ejer", hot:true}); }
+    if(p.ownerType==="Privatperson"){ s+=10; r.push({t:"Privat ejer", hot:false}); }
+    if(p.ownerPropCount>=2){ s+=10; r.push({t:p.ownerPropCount+" ejendomme", hot:false}); }
+    return {score:s, reasons:r};
+  }
+  function tier(s){ return s>=60 ? ["#dc2626","var(--red)","Hot"] : s>=35 ? ["#b9770f","var(--amber)","Warm"] : ["#1763d1","var(--muted)","Kold"]; }
+
+  /* ---- Pipeline state ---- */
   var pipeline = [];
   try { pipeline = JSON.parse(localStorage.getItem('afkast_pipeline')||'[]'); } catch(e){}
   function savePipe(){ try { localStorage.setItem('afkast_pipeline', JSON.stringify(pipeline)); } catch(e){} updatePipeCount(); }
   function inPipe(id){ return pipeline.some(function(p){return p.id===id;}); }
-  function addPipe(id){ if(!inPipe(id)){ pipeline.push({id:id, stage:"Watchlist", note:""}); savePipe(); toast("Tilføjet til pipeline"); } else { toast("Allerede i pipeline"); } }
+  function addPipe(id){ if(!inPipe(id)){ pipeline.push({id:id, stage:"Ikke kontaktet", note:""}); savePipe(); toast("Gemt som lead"); } else { toast("Allerede i pipeline"); } renderDash(); }
+  window.gemLead = function(id){ addPipe(id); };
+  window.openBiz = function(id){ openDetail(id); };
   function updatePipeCount(){ var n=pipeline.length; $("pipe-n").textContent = n? "("+n+")":""; }
-
   function toast(msg){ var t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove("show");},1800); }
 
+  /* ---- Views ---- */
   function showView(v){
     document.querySelectorAll(".view").forEach(function(s){s.classList.remove("active");});
     $("view-"+v).classList.add("active");
     document.querySelectorAll(".tab").forEach(function(t){t.classList.toggle("active", t.getAttribute("data-view")===v);});
     if(v==="pipeline") renderBoard();
+    if(v==="find" && map){ setTimeout(function(){ map.invalidateSize(); }, 50); }
     window.scrollTo({top:0});
   }
   window.showView = showView;
   document.querySelectorAll(".tab").forEach(function(t){
     t.addEventListener("click", function(){
       var v=t.getAttribute("data-view");
-      if(v==="detail"){ if(!current) openDetail(DATA[0].id); else showView("detail"); }
+      if(v==="detail"){ openDetail(current?current.id:DATA[0].id); }
       else showView(v);
     });
   });
 
+  /* ---- Map ---- */
+  var map=null, markers={}, markerLayer=null;
+  function initMap(){
+    if(typeof L==="undefined"){ $("map").innerHTML='<div class="empty" style="padding:150px 0;">Kort kunne ikke indlæses (offline).</div>'; return; }
+    map = L.map('map', {scrollWheelZoom:true}).setView([56.0, 10.6], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
+    markerLayer = L.layerGroup().addTo(map);
+  }
+  function renderMarkers(list){
+    if(!map) return;
+    markerLayer.clearLayers(); markers={};
+    list.forEach(function(o){
+      var d=o.p, col=tier(o.s.score)[0];
+      var m=L.circleMarker([d.lat,d.lng], {radius:9, fillColor:col, color:"#fff", weight:2, fillOpacity:.95});
+      m.bindPopup('<b>'+d.addr+'</b><br>'+d.city+' · '+d.type+'<br>Lead score: <b>'+o.s.score+'</b><br>'+
+        '<button onclick="gemLead('+d.id+')" style="margin-top:6px; cursor:pointer; border:1px solid #1763d1; background:#1763d1; color:#fff; border-radius:8px; padding:5px 10px;">Gem som lead</button> '+
+        '<button onclick="openBiz('+d.id+')" style="margin-top:6px; cursor:pointer; border:1px solid #1763d1; background:#fff; color:#1763d1; border-radius:8px; padding:5px 10px;">Business case</button>');
+      m.addTo(markerLayer); markers[d.id]=m;
+    });
+  }
+  function focusMap(id){ if(!map) return; var d=byId(id); map.setView([d.lat,d.lng], 13); if(markers[id]) markers[id].openPopup(); }
+
   /* ---- Find deals ---- */
   function initFilters(){
-    var cities=[...new Set(DATA.map(function(d){return d.city;}))].sort();
-    cities.forEach(function(c){ var o=document.createElement("option"); o.value=c; o.textContent=c; $("f-city").appendChild(o); });
-    var types=[...new Set(DATA.map(function(d){return d.type;}))].sort();
-    types.forEach(function(c){ var o=document.createElement("option"); o.value=c; o.textContent=c; $("f-type").appendChild(o); });
-    $("f-price").value=7000000; $("f-yield").value=0;
-    ["f-city","f-type","f-price","f-yield"].forEach(function(id){ $(id).addEventListener("input", renderDeals); });
+    var regions=[...new Set(DATA.map(function(d){return d.region;}))].sort();
+    regions.forEach(function(r){ var o=document.createElement("option"); o.value=r; o.textContent=r; $("f-region").appendChild(o); });
+    ["f-region","f-ownertype","f-age","f-lives","f-props","f-tenure","f-price","f-type","f-units","f-area"].forEach(function(id){
+      $(id).addEventListener("input", renderDeals);
+    });
+    $("f-reset").addEventListener("click", function(){
+      $("f-region").value=""; $("f-ownertype").value=""; $("f-age").value=0; $("f-lives").value="";
+      $("f-props").value=1; $("f-tenure").value=0; $("f-price").value=7000000; $("f-type").value=""; $("f-units").value=1; $("f-area").value=0;
+      renderDeals();
+    });
     renderDeals();
   }
   function renderDeals(){
-    var city=$("f-city").value, type=$("f-type").value, maxp=+$("f-price").value, miny=+$("f-yield").value;
-    $("f-price-out").textContent = kr(maxp); $("f-yield-out").textContent = pc(miny);
-    var list = DATA.filter(function(d){
-      return (!city||d.city===city) && (!type||d.type===type) && d.price<=maxp && bafk(d)>=miny;
-    }).sort(function(a,b){ return bafk(b)-bafk(a); });
-    $("deal-count").textContent = list.length + " ejendomme — sorteret efter højeste bruttoafkast";
+    var region=$("f-region").value, ot=$("f-ownertype").value, minAge=+$("f-age").value, lives=$("f-lives").value,
+        minProps=+$("f-props").value, minTen=+$("f-tenure").value, maxPrice=+$("f-price").value, ptype=$("f-type").value, minUnits=+$("f-units").value, minArea=+$("f-area").value;
+    $("o-age").textContent = minAge===0 ? "alle" : minAge+"+ år";
+    $("o-props").textContent = minProps; $("o-tenure").textContent = minTen; $("o-price").textContent = kr(maxPrice);
+    $("o-units").textContent = minUnits; $("o-area").textContent = minArea+" m²";
+
+    var list = DATA.filter(function(p){
+      if(region && p.region!==region) return false;
+      if(ot && p.ownerType!==ot) return false;
+      if(minAge>0 && !(p.ownerAge!==null && p.ownerAge>=minAge)) return false;
+      if(lives==="ja" && !p.ownerLivesHere) return false;
+      if(lives==="nej" && p.ownerLivesHere) return false;
+      if(p.ownerPropCount<minProps) return false;
+      if(tenure(p)<minTen) return false;
+      if(p.lastSalePrice>maxPrice) return false;
+      if(ptype && p.type!==ptype) return false;
+      if(p.units<minUnits) return false;
+      if(p.area<minArea) return false;
+      return true;
+    }).map(function(p){ return {p:p, s:leadScore(p)}; })
+      .sort(function(a,b){ return b.s.score-a.s.score; });
+
+    $("deal-count").textContent = list.length + " leads — sorteret efter lead score";
+    renderMarkers(list);
     var box=$("deal-list"); box.innerHTML="";
-    if(!list.length){ box.innerHTML='<div class="empty">Ingen ejendomme matcher filtrene.</div>'; return; }
-    list.forEach(function(d){
-      var y=bafk(d), yc=yieldColor(y);
+    if(!list.length){ box.innerHTML='<div class="card"><div class="empty">Ingen leads matcher filtrene.</div></div>'; return; }
+    list.forEach(function(o){
+      var d=o.p, tv=tier(o.s.score);
       var el=document.createElement("div"); el.className="card deal";
       el.innerHTML =
-        '<div class="main"><div class="addr">'+d.addr+'</div><div class="meta">'+d.city+' · '+d.type+' · '+d.area+' m² · '+d.rooms+' vær. · opført '+d.year+' '+energyHtml(d.energy)+'</div></div>'+
-        '<div class="nums">'+
-          '<div><div class="k">Pris</div><div class="v">'+kr(d.price)+'</div></div>'+
-          '<div><div class="k">Leje/md</div><div class="v">'+kr(d.rent)+'</div></div>'+
-          '<div><div class="k">Bruttoafkast</div><div class="v"><span class="badge" style="background:'+yc[0]+';color:'+yc[1]+'">'+pc(y)+'</span></div></div>'+
+        '<div class="score"><div class="n" style="color:'+tv[1]+'">'+o.s.score+'</div><div class="l">'+tv[2]+'</div></div>'+
+        '<div class="main">'+
+          '<div class="addr">'+d.addr+'</div>'+
+          '<div class="meta">'+d.city+' · '+d.region+' · '+d.type+' · '+d.area+' m² · '+d.units+' enhed'+(d.units>1?'er':'')+' '+energyHtml(d.energy)+'</div>'+
+          '<div class="owner">'+d.ownerName+' <span style="color:var(--muted)">('+d.ownerType+(d.ownerAge?', '+d.ownerAge+' år':'')+') · '+d.ownerPropCount+' ejendom'+(d.ownerPropCount>1?'me':'')+' · seneste handel '+d.saleYear+'</span></div>'+
+          '<div class="chips">'+o.s.reasons.map(function(x){return '<span class="chip'+(x.hot?' hot':'')+'">'+x.t+'</span>';}).join("")+'</div>'+
+        '</div>'+
+        '<div class="acts">'+
+          '<button class="btn sm" data-gem="'+d.id+'">'+(inPipe(d.id)?'✓ Gemt':'Gem som lead')+'</button>'+
+          '<button class="btn ghost sm" data-biz="'+d.id+'">Business case</button>'+
         '</div>';
-      el.addEventListener("click", function(){ openDetail(d.id); });
+      el.addEventListener("click", function(e){ if(!e.target.closest("button")) focusMap(d.id); });
       box.appendChild(el);
     });
+    box.querySelectorAll("[data-gem]").forEach(function(b){ b.addEventListener("click", function(){ addPipe(+b.getAttribute("data-gem")); renderDeals(); }); });
+    box.querySelectorAll("[data-biz]").forEach(function(b){ b.addEventListener("click", function(){ openDetail(+b.getAttribute("data-biz")); }); });
   }
 
-  /* ---- Detail + calculator ---- */
+  /* ---- Dashboard ---- */
+  function renderDash(){
+    var scored = DATA.map(function(p){return {p:p, s:leadScore(p).score};});
+    var top = scored.slice().sort(function(a,b){return b.s-a.s;})[0];
+    var last = pipeline.length ? byId(pipeline[pipeline.length-1].id) : null;
+    $("dash").innerHTML =
+      dcard("Fundne leads", DATA.length, "i databasen")+
+      dcard("Leads i pipeline", pipeline.length, pipeline.length? "gemt":"ingen endnu")+
+      dcard("Højeste lead score", top.s, top.p.addr+", "+top.p.city)+
+      dcard("Senest tilføjet", last? last.addr : "—", last? last.city : "gem et lead");
+  }
+  function dcard(k,v,s){ return '<div class="dcard"><div class="k">'+k+'</div><div class="v">'+v+'</div><div class="s">'+s+'</div></div>'; }
+
+  /* ---- Business case (detail) — unchanged evaluation page ---- */
   var current=null;
   function openDetail(id){
-    current=byId(id);
-    var d=current;
+    current=byId(id); var d=current;
     $("detail-body").innerHTML =
       '<div class="grid2">'+
         '<div class="card facts">'+
           '<div class="addr">⚲ '+d.addr+'</div><div class="sub">'+d.city+' · '+d.type+'</div>'+
           '<div class="fgrid">'+
-            fact("Areal", d.area+" m²")+fact("Værelser", d.rooms)+fact("Opført", d.year)+
-            fact("Energimærke", energyHtml(d.energy))+fact("Off. vurdering", kr(d.vur))+fact("Grundskyld / år", kr(d.tax))+
-            fact("Senest solgt", d.sold)+fact("Zone", d.zone)+
+            fact("Ejer", d.ownerName)+fact("Ejerskabstype", d.ownerType+(d.ownerAge?", "+d.ownerAge+" år":""))+
+            fact("Areal", d.area+" m²")+fact("Boligenheder", d.units)+fact("Opført", d.year)+fact("Energimærke", energyHtml(d.energy))+
+            fact("Off. vurdering", kr(d.vur))+fact("Grundskyld / år", kr(d.tax))+fact("Seneste handel", d.saleYear+" · "+kr(d.lastSalePrice))+fact("Zone", d.zone)+
           '</div>'+
-          '<button class="btn '+(inPipe(d.id)?'ghost':'')+'" style="margin-top:18px; width:100%;" id="pipe-btn">'+(inPipe(d.id)?'✓ I din pipeline':'+ Gem i pipeline')+'</button>'+
+          '<button class="btn '+(inPipe(d.id)?'ghost':'')+'" style="margin-top:18px; width:100%;" id="pipe-btn">'+(inPipe(d.id)?'✓ I din pipeline':'+ Gem som lead')+'</button>'+
         '</div>'+
         '<div class="card calc">'+
           '<div style="font-weight:600; margin-bottom:14px;">Investeringscase</div>'+
-          sl("price","Købspris",500000,8000000,25000,d.price)+
-          sl("rent","Forventet leje / md",3000,40000,100,d.rent)+
-          sl("vac","Tomgang (%)",0,20,1,4)+
-          sl("down","Udbetaling (%)",5,50,1,20)+
-          sl("rate","Rente (%)",0,8,0.1,4.5)+
-          sl("cost","Driftsudgifter / år",0,160000,1000,d.cost)+
-          '<div class="results">'+
-            mc("cf","Likviditet / md")+mc("coc","Egenkapitalforrentning")+mc("gross","Bruttoafkast")+mc("net","Nettoafkast")+
-          '</div>'+
+          sl("price","Købspris",500000,8000000,25000,d.price)+sl("rent","Forventet leje / md",3000,60000,100,d.rent)+
+          sl("vac","Tomgang (%)",0,20,1,4)+sl("down","Udbetaling (%)",5,50,1,20)+sl("rate","Rente (%)",0,8,0.1,4.5)+sl("cost","Driftsudgifter / år",0,200000,1000,d.cost)+
+          '<div class="results">'+mc("cf","Likviditet / md")+mc("coc","Egenkapitalforrentning")+mc("gross","Bruttoafkast")+mc("net","Nettoafkast")+'</div>'+
           '<div class="subline"><span>Egenkapital: <b id="r-equity">—</b></span><span>Ydelse/md: <b id="r-pmt">—</b></span><span>Break-even leje: <b id="r-be">—</b></span></div>'+
         '</div>'+
       '</div>';
     ["price","rent","vac","down","rate","cost"].forEach(function(k){ $("s-"+k).addEventListener("input", compute); });
     $("pipe-btn").addEventListener("click", function(){ addPipe(d.id); openDetail(d.id); });
-    compute();
-    showView("detail");
+    compute(); showView("detail");
   }
   function fact(k,v){ return '<div><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
-  function sl(k,lbl,mn,mx,st,val){ return '<div class="slider"><div class="top"><span class="lbl">'+lbl+'</span><span class="out" id="o-'+k+'"></span></div><input id="s-'+k+'" type="range" min="'+mn+'" max="'+mx+'" step="'+st+'" value="'+val+'"></div>'; }
+  function sl(k,lbl,mn,mx,st,val){ return '<div class="slider"><div class="top"><span class="lbl">'+lbl+'</span><span class="out" id="o2-'+k+'"></span></div><input id="s-'+k+'" type="range" min="'+mn+'" max="'+mx+'" step="'+st+'" value="'+val+'"></div>'; }
   function mc(k,lbl){ return '<div class="metric" id="card-'+k+'"><div class="k">'+lbl+'</div><div class="v" id="r-'+k+'">—</div></div>'; }
   function compute(){
     var P=+$("s-price").value, Rm=+$("s-rent").value, vac=+$("s-vac").value, dn=+$("s-down").value, i=+$("s-rate").value, D=+$("s-cost").value;
-    $("o-price").textContent=kr(P); $("o-rent").textContent=kr(Rm); $("o-vac").textContent=vac+" %"; $("o-down").textContent=dn+" %"; $("o-rate").textContent=pc(i); $("o-cost").textContent=kr(D);
+    $("o2-price").textContent=kr(P); $("o2-rent").textContent=kr(Rm); $("o2-vac").textContent=vac+" %"; $("o2-down").textContent=dn+" %"; $("o2-rate").textContent=pc(i); $("o2-cost").textContent=kr(D);
     var R=Rm*12*(1-vac/100), down=P*dn/100, fees=Math.round(P*0.006)+1850+6000, equity=down+fees, loan=P-down;
     var r=i/100/12, n=360, pmtM=r===0?loan/n:loan*r/(1-Math.pow(1+r,-n)), debtYr=pmtM*12, noi=R-D, cfM=(noi-debtYr)/12;
     $("r-gross").textContent=pc(R/P*100); $("r-net").textContent=pc(noi/P*100); $("r-coc").textContent=pc((noi-debtYr)/equity*100);
@@ -315,35 +422,30 @@
     STAGES.forEach(function(stage){
       var items=pipeline.filter(function(p){return p.stage===stage;});
       var col=document.createElement("div"); col.className="col";
-      col.innerHTML='<h3>'+stage+'<span class="n">'+items.length+'</span></h3>';
-      if(!items.length) col.innerHTML+='<div class="empty" style="padding:14px 0;">—</div>';
+      col.innerHTML='<h3><span>'+stage+'</span><span class="n">'+items.length+'</span></h3>';
       items.forEach(function(p){
-        var d=byId(p.id), y=bafk(d), yc=yieldColor(y);
+        var d=byId(p.id), sc=leadScore(d).score, tv=tier(sc);
         var c=document.createElement("div"); c.className="pcard";
         c.innerHTML='<div style="display:flex; justify-content:space-between; align-items:start;"><div class="pa">'+d.addr+'</div><button class="rm" title="Fjern" data-rm="'+p.id+'">×</button></div>'+
-          '<div class="pm">'+d.city+' · '+kr(d.price)+' · <span class="badge" style="background:'+yc[0]+';color:'+yc[1]+'; padding:1px 6px;">'+pc(y)+'</span></div>'+
-          '<textarea placeholder="Noter…" data-note="'+p.id+'">'+(p.note||"")+'</textarea>'+
-          '<div class="row"><select data-stage="'+p.id+'">'+STAGES.map(function(s){return '<option'+(s===p.stage?' selected':'')+'>'+s+'</option>';}).join("")+'</select></div>';
+          '<div class="pm">'+d.city+' · score <b style="color:'+tv[1]+'">'+sc+'</b> · '+d.ownerName+'</div>'+
+          '<textarea placeholder="Noter, kontaktperson, tlf…" data-note="'+p.id+'">'+(p.note||"")+'</textarea>'+
+          '<select data-stage="'+p.id+'">'+STAGES.map(function(s){return '<option'+(s===p.stage?' selected':'')+'>'+s+'</option>';}).join("")+'</select>';
         col.appendChild(c);
       });
       board.appendChild(col);
     });
-    if(!pipeline.length) board.innerHTML='<div class="empty" style="grid-column:1/-1; padding:50px 0;">Din pipeline er tom. Find en ejendom under “Find deals” og gem den her.</div>';
-    board.querySelectorAll("[data-rm]").forEach(function(b){ b.addEventListener("click", function(){ pipeline=pipeline.filter(function(p){return p.id!=+b.getAttribute("data-rm");}); savePipe(); renderBoard(); }); });
-    board.querySelectorAll("[data-stage]").forEach(function(s){ s.addEventListener("change", function(){ var p=pipeline.filter(function(x){return x.id==+s.getAttribute("data-stage");})[0]; p.stage=s.value; savePipe(); renderBoard(); }); });
-    board.querySelectorAll("[data-note]").forEach(function(t){ t.addEventListener("input", function(){ var p=pipeline.filter(function(x){return x.id==+t.getAttribute("data-note");})[0]; p.note=t.value; savePipe(); }); });
+    if(!pipeline.length) board.innerHTML='<div class="empty" style="grid-column:1/-1; padding:50px 0;">Din pipeline er tom. Find leads under “Find deals” og gem dem her.</div>';
+    board.querySelectorAll("[data-rm]").forEach(function(b){ b.addEventListener("click", function(){ pipeline=pipeline.filter(function(p){return p.id!=+b.getAttribute("data-rm");}); savePipe(); renderBoard(); renderDash(); }); });
+    board.querySelectorAll("[data-stage]").forEach(function(s){ s.addEventListener("change", function(){ pipeline.filter(function(x){return x.id==+s.getAttribute("data-stage");})[0].stage=s.value; savePipe(); renderBoard(); }); });
+    board.querySelectorAll("[data-note]").forEach(function(t){ t.addEventListener("input", function(){ pipeline.filter(function(x){return x.id==+t.getAttribute("data-note");})[0].note=t.value; savePipe(); }); });
   }
 
   /* ---- Waitlist ---- */
   window.openWait=function(){ $("wait").classList.add("open"); };
   $("wait").addEventListener("click", function(e){ if(e.target===$("wait")) $("wait").classList.remove("open"); });
-  $("wform").addEventListener("submit", function(e){
-    e.preventDefault();
-    // TODO: connect to a real backend / form service (Formspree, Tally, egen API) for at indsamle emails.
-    $("wait").classList.remove("open"); toast("Tak! Vi skriver til dig når vi åbner.");
-  });
+  $("wform").addEventListener("submit", function(e){ e.preventDefault(); $("wait").classList.remove("open"); toast("Tak! Vi skriver til dig når vi åbner."); });
 
-  initFilters(); updatePipeCount();
+  initMap(); initFilters(); renderDash(); updatePipeCount();
 })();
 </script>
 </body>
