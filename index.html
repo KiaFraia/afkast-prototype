@@ -424,13 +424,22 @@
   }
 
   /* ---- AI assistant (natural language -> filters, hosted open model, OpenAI-compatible) ---- */
-  var PROXY_URL = ""; // set to your deployed Cloudflare Worker URL to serve all users off one server-side key
+  var PROXY_URL = "https://purple-tree-3fd5.kiakafaei.workers.dev"; // Cloudflare Worker proxy (server-side Groq key)
   var OAI_BASE_DEFAULT = "https://api.groq.com/openai/v1";
   var OAI_MODEL_DEFAULT = "llama-3.1-8b-instant";
   function oaiBase(){ try{ return localStorage.getItem('afkast_oai_base')||OAI_BASE_DEFAULT; }catch(e){ return OAI_BASE_DEFAULT; } }
   function oaiKey(){ try{ return localStorage.getItem('afkast_oai_key')||""; }catch(e){ return ""; } }
   function oaiModel(){ try{ return localStorage.getItem('afkast_oai_model')||OAI_MODEL_DEFAULT; }catch(e){ return OAI_MODEL_DEFAULT; } }
   function clampNum(v,mn,mx,d){ v=Number(v); if(isNaN(v)) return d; return Math.min(mx,Math.max(mn,Math.round(v))); }
+  function normalizeFilters(f){
+    f=f||{};
+    var regs=["Hovedstaden","Midtjylland","Syddanmark","Nordjylland"];
+    if(f.region && regs.indexOf(f.region)<0){
+      var cr={"københavn":"Hovedstaden","kbh":"Hovedstaden","hellerup":"Hovedstaden","frederiksberg":"Hovedstaden","gentofte":"Hovedstaden","charlottenlund":"Hovedstaden","valby":"Hovedstaden","vanløse":"Hovedstaden","rødovre":"Hovedstaden","aarhus":"Midtjylland","århus":"Midtjylland","randers":"Midtjylland","horsens":"Midtjylland","odense":"Syddanmark","esbjerg":"Syddanmark","vejle":"Syddanmark","svendborg":"Syddanmark","aalborg":"Nordjylland","ålborg":"Nordjylland"};
+      f.region = cr[(""+f.region).toLowerCase()] || "";
+    }
+    return f;
+  }
 
   function asstChips(f){
     f=f||{}; var c=[];
@@ -512,7 +521,7 @@
   async function askAssistant(text){
     var box=$("asst-result"); box.style.display="block"; box.innerHTML='<div class="asst-reply">Tænker…</div>';
     try{
-      if(PROXY_URL || oaiKey()){ var r=await callModel(text); renderAsstResult({filters:(r&&r.filters)||{}, reply:(r&&r.reply)||"", source:"api"}); }
+      if(PROXY_URL || oaiKey()){ var r=await callModel(text); renderAsstResult({filters:normalizeFilters((r&&r.filters)||{}), reply:(r&&r.reply)||"", source:"api"}); }
       else { renderAsstResult(mockParse(text)); }
     }catch(err){
       var mk=mockParse(text); mk.reply="Kunne ikke kalde modellen ("+((err&&err.message)||err)+"). Viser en simpel fortolkning i stedet."; renderAsstResult(mk);
