@@ -158,9 +158,7 @@
 <div class="wrap">
 
   <section class="view active" id="view-find">
-    <div class="vhead"><h1>Find deals</h1><p>Find off-market leads — filtrér på ejer- og ejendomsdata, og find motiverede sælgere på kortet. Rangeret efter lead score.</p></div>
-
-    <div class="dash" id="dash"></div>
+    <div class="vhead"><h1>Find deals</h1></div>
 
     <div class="finder">
       <div class="card fpanel">
@@ -188,11 +186,6 @@
 
       <div class="fmain">
         <div id="map" class="map"></div>
-        <div class="legend">
-          <span><span class="dot" style="background:#dc2626;"></span>Hot lead (60+)</span>
-          <span><span class="dot" style="background:#b9770f;"></span>Warm (35–59)</span>
-          <span><span class="dot" style="background:#1763d1;"></span>Kold (&lt;35)</span>
-        </div>
         <p class="count" id="deal-count"></p>
         <div class="deal-list" id="deal-list"></div>
       </div>
@@ -389,6 +382,7 @@
 
   /* ---- Dashboard ---- */
   function renderDash(){
+    if(!$("dash")) return;
     var scored = DATA.map(function(p){return {p:p, s:leadScore(p).score};});
     var top = scored.slice().sort(function(a,b){return b.s-a.s;})[0];
     var last = pipeline.length ? byId(pipeline[pipeline.length-1].id) : null;
