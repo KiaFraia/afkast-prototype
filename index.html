@@ -104,6 +104,8 @@
   .col h3 .n{background:var(--bg2); border-radius:999px; padding:1px 7px; font-size:11px;}
   .pcard{background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px; margin-bottom:9px; cursor:pointer;}
   .pcard:hover{border-color:var(--blue);}
+  .pcard.dragging{opacity:.45;}
+  .col.drag-over{border-color:var(--blue); background:var(--blue-bg);}
   .pcard .pa{font-weight:600; font-size:13px; margin-bottom:3px;}
   .pcard .pm{font-size:12px; color:var(--muted); margin-bottom:7px;}
   .pcard textarea{width:100%; font:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:6px; resize:vertical; min-height:32px; background:#fff;}
@@ -470,14 +472,19 @@
       col.innerHTML='<h3><span>'+stage+'</span><span class="n">'+items.length+'</span></h3>';
       items.forEach(function(p){
         var d=byId(p.id), sc=leadScore(d).score, tv=tier(sc);
-        var c=document.createElement("div"); c.className="pcard";
+        var c=document.createElement("div"); c.className="pcard"; c.setAttribute("draggable","true");
         c.innerHTML='<div style="display:flex; justify-content:space-between; align-items:start;"><div class="pa">'+d.addr+'</div><button class="rm" title="Fjern" data-rm="'+p.id+'">×</button></div>'+
           '<div class="pm">'+d.city+' · score <b style="color:'+tv[1]+'">'+sc+'</b> · '+d.ownerName+'</div>'+
           '<textarea placeholder="Noter, kontaktperson, tlf…" data-note="'+p.id+'">'+(p.note||"")+'</textarea>'+
           '<select data-stage="'+p.id+'">'+STAGES.map(function(s){return '<option'+(s===p.stage?' selected':'')+'>'+s+'</option>';}).join("")+'</select>';
         c.addEventListener("click", function(e){ if(!e.target.closest("textarea,select,button")) openDetail(p.id); });
+        c.addEventListener("dragstart", function(e){ e.dataTransfer.setData("text/plain", String(p.id)); e.dataTransfer.effectAllowed="move"; c.classList.add("dragging"); });
+        c.addEventListener("dragend", function(){ c.classList.remove("dragging"); });
         col.appendChild(c);
       });
+      col.addEventListener("dragover", function(e){ e.preventDefault(); e.dataTransfer.dropEffect="move"; col.classList.add("drag-over"); });
+      col.addEventListener("dragleave", function(e){ if(!col.contains(e.relatedTarget)) col.classList.remove("drag-over"); });
+      col.addEventListener("drop", function(e){ e.preventDefault(); col.classList.remove("drag-over"); var id=+e.dataTransfer.getData("text/plain"); var it=pipeline.filter(function(x){return x.id===id;})[0]; if(it && it.stage!==stage){ it.stage=stage; savePipe(); renderBoard(); } });
       board.appendChild(col);
     });
     if(!pipeline.length) board.innerHTML='<div class="empty" style="grid-column:1/-1; padding:50px 0;">Din pipeline er tom. Find leads under “Find deals” og gem dem her.</div>';
