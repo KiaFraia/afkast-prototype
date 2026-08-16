@@ -19,9 +19,17 @@ merged ──> ejendomsprofil JSON
 | Step | Source | Auth | Status |
 |---|---|---|---|
 | adresse → DAR id, matrikel, BFE, grundareal, koordinater | DAWA (api.dataforsyningen.dk) | none | ✅ works — `node spine/resolve.mjs "<adresse>"` verified BFE 5393320 + 413 m² |
-| BFE → bygninger/enheder | BBR via Datafordeler | tjenestebruger | ⏳ awaiting credentials (endpoint answers 403 without) |
-| BFE → SFE/jordstykker | Matriklen via Datafordeler | tjenestebruger | ⏳ awaiting credentials (+ pin exact REST path) |
-| BFE → ejere | EJF via Datafordeler | tjenestebruger, possibly approval | ⏳ awaiting credentials |
+| adresse-detaljer | DAR via Datafordeler | tjenestebruger | ✅ works with our tjenestebruger (creds in git-ignored `spine/.env`) |
+| BFE → bygninger/enheder | BBR (`/BBR/BBRPublic/1/rest/…`) | tjenestebruger **+ tjenesteadgang** | ⏳ 500 until the service is added to the tjenestebruger in selvbetjening |
+| BFE → SFE/jordstykker | Matriklen2 (`/Matriklen2/Matrikel/…/rest/…`) | tjenestebruger **+ tjenesteadgang** | ⏳ same — add service |
+| BFE ↔ beliggenhedsadresse | EBR (`/EBR/Ejendomsbeliggenhed/1/rest/…`) | tjenestebruger **+ tjenesteadgang** | ⏳ same — add service |
+| BFE → ejere | EJF — hosted on `s5-certservices.datafordeler.dk` | **formal access request** (fortrolig tjeneste, certificate) | ⏳ file "anmodning om adgang" — the slow one |
+
+Learned empirically (16-08-2026): credentials alone open DAR; every other service
+returns a blanket `500` until *tjenesteadgang* is granted per service in
+selvbetjening. EJF's full owner data is a "fortrolig" service behind a formal
+request + certificate host. Datafordeler REST is being phased out end-2026 →
+plan a GraphQL migration later.
 
 Known wrinkle: for **ejerlejligheder** DAWA gives the *parent* property's BFE; the
 unit's own BFE comes from the credentialed BBR/EBR lookup (phase 1).
