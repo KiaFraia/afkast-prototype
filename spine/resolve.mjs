@@ -52,8 +52,8 @@ export async function resolveAddress(query) {
   };
 }
 
-// CLI entry
-const query = process.argv.slice(2).join(" ");
+// CLI entry (only when run directly, not on import)
+const query = process.argv[1]?.endsWith("resolve.mjs") ? process.argv.slice(2).join(" ") : "";
 if (query) {
   resolveAddress(query)
     .then((p) => console.log(JSON.stringify(p, null, 2)))

@@ -16,20 +16,26 @@ merged ──> ejendomsprofil JSON
 
 ## Status
 
+**PHASE 1 PROVEN (16-08-2026): 11/11 fields match the Resights ground truth.**
+`node spine/profile.mjs "Boulevarden 5, 4760 Vordingborg"` returns the merged
+profile — BFE, matrikel, grundareal 413, bygningsareal 104, boligareal 168,
+opført 1924, kælder 102, tagetage 64, garage 2007/18 m², ejerforhold
+Privatpersoner — all identical to the partner's Resights screenshot.
+
 | Step | Source | Auth | Status |
 |---|---|---|---|
-| adresse → DAR id, matrikel, BFE, grundareal, koordinater | DAWA (api.dataforsyningen.dk) | none | ✅ works — `node spine/resolve.mjs "<adresse>"` verified BFE 5393320 + 413 m² |
-| adresse-detaljer | DAR via Datafordeler | tjenestebruger | ✅ works with our tjenestebruger (creds in git-ignored `spine/.env`) |
-| BFE → bygninger/enheder | BBR (`/BBR/BBRPublic/1/rest/…`) | tjenestebruger **+ tjenesteadgang** | ⏳ 500 until the service is added to the tjenestebruger in selvbetjening |
-| BFE → SFE/jordstykker | Matriklen2 (`/Matriklen2/Matrikel/…/rest/…`) | tjenestebruger **+ tjenesteadgang** | ⏳ same — add service |
-| BFE ↔ beliggenhedsadresse | EBR (`/EBR/Ejendomsbeliggenhed/1/rest/…`) | tjenestebruger **+ tjenesteadgang** | ⏳ same — add service |
-| BFE → ejere | EJF — hosted on `s5-certservices.datafordeler.dk` | **formal access request** (fortrolig tjeneste, certificate) | ⏳ file "anmodning om adgang" — the slow one |
+| adresse → DAR id, matrikel, BFE, grundareal | DAWA (api.dataforsyningen.dk) | none — fully open | ✅ |
+| adresse-detaljer | DAR via Datafordeler | none — fully open | ✅ |
+| BFE → bygninger (incl. etager) + ejendomsrelation | BBR (`/BBR/BBRPublic/1/rest/…`) | tjenestebruger (adgangskode) | ✅ |
+| BFE → SFE | Matriklen2 (`/Matriklen2/Matrikel/2.0.0/rest/SamletFastEjendom?SFEBFEnr=`) | tjenestebruger | ✅ |
+| BFE → beliggenhed | EBR (`/EBR/Ejendomsbeliggenhed/1/rest/Ejendomsbeliggenhed?BFEnr=`) | tjenestebruger | ✅ |
+| BFE → **ejernavne** | EJF — `s5-certservices.datafordeler.dk` | **OCES virksomhedscertifikat + IP** ("Certifikat og IP"); adgang styres af Geodatastyrelsen | ⏳ next step — needs company certificate |
 
-Learned empirically (16-08-2026): credentials alone open DAR; every other service
-returns a blanket `500` until *tjenesteadgang* is granted per service in
-selvbetjening. EJF's full owner data is a "fortrolig" service behind a formal
-request + certificate host. Datafordeler REST is being phased out end-2026 →
-plan a GraphQL migration later.
+Empirical notes: a *webbruger* login gives 500 on the services; a proper
+*tjenestebruger* (adgangskode type) opens BBR/MAT/EBR directly — no per-service
+grant needed. EJF (owner names) is the only certificate-gated source; until then
+the profile carries `ejerforhold` (e.g. "Privatpersoner") without names.
+Datafordeler REST is phased out end-2026 → plan a GraphQL migration later.
 
 Known wrinkle: for **ejerlejligheder** DAWA gives the *parent* property's BFE; the
 unit's own BFE comes from the credentialed BBR/EBR lookup (phase 1).
