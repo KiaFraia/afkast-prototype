@@ -41,7 +41,7 @@ export async function resolveAddress(query) {
     kommune: { kode: a.kommune?.kode, navn: a.kommune?.navn },
     koordinater: a.adgangspunkt?.koordinater ?? null, // [lon, lat]
     matrikel: js
-      ? { ejerlavKode: js.ejerlav.kode, ejerlavNavn: js.ejerlav.navn, matrikelnr: js.matrikelnr }
+      ? { ejerlavKode: js.ejerlav.kode, ejerlavNavn: js.ejerlav.navn, matrikelnr: js.matrikelnr, featureid: js.featureid ?? null }
       : null,
     // The join key for everything else. DAWA sometimes leaves bfenummer empty
     // but carries the same number as sfeejendomsnr (samlet fast ejendom).

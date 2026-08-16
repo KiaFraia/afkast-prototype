@@ -21,8 +21,9 @@ const env = Object.fromEntries(
 const DAF = "https://services.datafordeler.dk";
 
 // BBR kodelister (subset)
-const ANVENDELSE = { 110: "Stuehus til landbrug", 120: "Fritliggende enfamilieshus", 121: "Sammenbygget enfamiliehus", 130: "Række-/kædehus", 140: "Etagebolig-bygning", 190: "Anden helårsbeboelse", 910: "Garage", 920: "Carport", 930: "Udhus" };
-const EJERFORHOLD = { 10: "Privatpersoner", 20: "Alment boligselskab", 30: "Aktie-/anpartsselskab", 40: "Forening/legat/selvejende institution", 41: "Privat andelsboligforening", 50: "Staten", 60: "Region", 70: "Kommune", 80: "Andet", 90: "Ikke fastlagt" };
+const ANVENDELSE = { 110: "Stuehus til landbrug", 120: "Fritliggende enfamilieshus", 121: "Sammenbygget enfamiliehus", 130: "Række-/kædehus", 131: "Række-/kædehus", 132: "Dobbelthus", 140: "Etagebolig-bygning", 190: "Anden helårsbeboelse", 320: "Erhverv (kontor/handel)", 321: "Kontor", 322: "Detailhandel", 330: "Restaurant/hotel", 910: "Garage", 920: "Carport", 930: "Udhus" };
+const EJERFORHOLD = { 10: "Privatpersoner", 20: "Alment boligselskab", 30: "Aktie-/anpartsselskab", 40: "Forening/legat/selvejende institution", 41: "Privat andelsboligforening", 50: "Staten", 60: "Region", 70: "Kommune", 80: "Andet", 90: "Ikke fastlagt", 99: "Ukendt" };
+const AKTIV_STATUS = ["6", "7"];
 const EJENDOMSTYPE = { 1: "Samlet fast ejendom", 2: "Ejerlejlighed", 3: "Bygning på fremmed grund" };
 
 async function daf(path, params) {
@@ -39,15 +40,18 @@ export async function buildProfile(query) {
   const base = await resolveAddress(query);
   if (!base.bfe) throw new Error("Kunne ikke finde BFE for adressen");
 
+  const bygQuery = base.matrikel?.featureid
+    ? { jordstykke: base.matrikel.featureid }
+    : { husnummer: base.darId };
   const [bygninger, relation, sfe, ebr] = await Promise.all([
-    daf("BBR/BBRPublic/1/rest/bygning", { husnummer: base.darId }),
+    daf("BBR/BBRPublic/1/rest/bygning", bygQuery),
     daf("BBR/BBRPublic/1/rest/ejendomsrelation", { bfeNummer: base.bfe }),
     daf("Matriklen2/Matrikel/2.0.0/rest/SamletFastEjendom", { SFEBFEnr: base.bfe }),
     daf("EBR/Ejendomsbeliggenhed/1/rest/Ejendomsbeliggenhed", { BFEnr: base.bfe }),
   ]);
 
   const aktiveBygninger = bygninger
-    .filter((b) => b.status === "6") // 6 = opført/gældende
+    .filter((b) => AKTIV_STATUS.includes(b.status))
     .map((b) => ({
       nr: b.byg007Bygningsnummer,
       anvendelse: ANVENDELSE[b.byg021BygningensAnvendelse] || b.byg021BygningensAnvendelse,

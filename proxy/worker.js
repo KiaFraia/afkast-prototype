@@ -19,8 +19,9 @@ const SYS = 'Du er assistent i en dansk ejendomsinvesteringsapp. Oversæt bruger
 
 const DAWA = "https://api.dataforsyningen.dk";
 const DAF = "https://services.datafordeler.dk";
-const ANVENDELSE = { 110: "Stuehus til landbrug", 120: "Fritliggende enfamilieshus", 121: "Sammenbygget enfamiliehus", 130: "Række-/kædehus", 140: "Etagebolig-bygning", 190: "Anden helårsbeboelse", 910: "Garage", 920: "Carport", 930: "Udhus" };
-const EJERFORHOLD = { 10: "Privatpersoner", 20: "Alment boligselskab", 30: "Aktie-/anpartsselskab", 40: "Forening/legat/selvejende institution", 41: "Privat andelsboligforening", 50: "Staten", 60: "Region", 70: "Kommune", 80: "Andet", 90: "Ikke fastlagt" };
+const ANVENDELSE = { 110: "Stuehus til landbrug", 120: "Fritliggende enfamilieshus", 121: "Sammenbygget enfamiliehus", 130: "Række-/kædehus", 131: "Række-/kædehus", 132: "Dobbelthus", 140: "Etagebolig-bygning", 190: "Anden helårsbeboelse", 320: "Erhverv (kontor/handel)", 321: "Kontor", 322: "Detailhandel", 330: "Restaurant/hotel", 910: "Garage", 920: "Carport", 930: "Udhus" };
+const EJERFORHOLD = { 10: "Privatpersoner", 20: "Alment boligselskab", 30: "Aktie-/anpartsselskab", 40: "Forening/legat/selvejende institution", 41: "Privat andelsboligforening", 50: "Staten", 60: "Region", 70: "Kommune", 80: "Andet", 90: "Ikke fastlagt", 99: "Ukendt" };
+const AKTIV_STATUS = ["6", "7"]; // 6=Opført, 7=Gældende; øvrige er historiske/nedrevne
 const EJENDOMSTYPE = { 1: "Samlet fast ejendom", 2: "Ejerlejlighed", 3: "Bygning på fremmed grund" };
 
 function cors() {
@@ -59,14 +60,19 @@ async function buildProfile(query, env) {
   const bfe = js?.bfenummer ?? js?.sfeejendomsnr ?? null;
   if (!bfe) throw new Error("Kunne ikke finde BFE for adressen");
 
+  // Buildings: query by jordstykke (parcel) — husnummer misses buildings on
+  // multi-address properties. Fall back to husnummer if no parcel id.
+  const bygQuery = js?.featureid
+    ? { jordstykke: js.featureid }
+    : { husnummer: a.id };
   const [bygninger, relation, sfe] = await Promise.all([
-    getJson(dafUrl("BBR/BBRPublic/1/rest/bygning", { husnummer: a.id }, env)),
+    getJson(dafUrl("BBR/BBRPublic/1/rest/bygning", bygQuery, env)),
     getJson(dafUrl("BBR/BBRPublic/1/rest/ejendomsrelation", { bfeNummer: bfe }, env)),
     getJson(dafUrl("Matriklen2/Matrikel/2.0.0/rest/SamletFastEjendom", { SFEBFEnr: bfe }, env)).catch(() => null),
   ]);
 
   const aktive = (bygninger || [])
-    .filter((b) => b.status === "6")
+    .filter((b) => AKTIV_STATUS.includes(b.status))
     .map((b) => ({
       nr: b.byg007Bygningsnummer,
       anvendelse: ANVENDELSE[b.byg021BygningensAnvendelse] || b.byg021BygningensAnvendelse,
