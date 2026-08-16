@@ -63,7 +63,15 @@
   .asst-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
   .asst-title{font-weight:600; font-size:15px; display:flex; align-items:center; gap:8px;}
   .asst-title .sparkle{color:var(--blue);}
-  .asst-title .beta{font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; background:var(--blue-bg); color:var(--blue-dark); padding:2px 7px; border-radius:6px;}
+  .beta{font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; background:var(--blue-bg); color:var(--blue-dark); padding:2px 7px; border-radius:6px;}
+  .lookup{padding:14px 18px; margin-bottom:18px;}
+  .lk-wrap{position:relative;}
+  .lk-wrap input{width:100%; box-sizing:border-box; font:inherit; font-size:15px; padding:11px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2); outline:none;}
+  .lk-wrap input:focus{border-color:var(--blue); background:#fff;}
+  .lk-sugg{position:absolute; left:0; right:0; top:46px; z-index:40; background:#fff; border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; box-shadow:0 8px 24px rgba(15,23,42,.10); display:none;}
+  .lk-sugg div{padding:10px 14px; font-size:14px; cursor:pointer;}
+  .lk-sugg div:hover{background:var(--bg2);}
+  .real-badge{display:inline-block; font-size:11px; font-weight:600; background:var(--green-bg); color:var(--green); padding:2px 8px; border-radius:6px; margin-left:8px;}
   .asst-gear{border:none; background:none; cursor:pointer; font-size:17px; color:var(--muted);}
   .asst-form{display:flex; gap:8px;}
   .asst-form input{flex:1; font:inherit; font-size:15px; padding:11px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2); outline:none;}
@@ -203,6 +211,15 @@
       <div id="asst-result" class="asst-result" style="display:none;"></div>
     </div>
 
+    <div class="card lookup">
+      <div style="font-weight:600; font-size:15px; margin-bottom:9px;">Slå ejendom op <span class="beta">rigtige data</span></div>
+      <div class="lk-wrap">
+        <input id="lk-input" type="text" autocomplete="off" placeholder="Skriv en dansk adresse, fx Boulevarden 5, 4760 Vordingborg">
+        <div id="lk-sugg" class="lk-sugg"></div>
+      </div>
+      <p class="asst-note">Henter live registerdata via Datafordeleren (BBR, Matriklen, EBR). Ejernavne kræver EJF-certifikat og kommer senere.</p>
+    </div>
+
     <div class="finder">
       <div class="card fpanel">
         <div class="fsection">
@@ -297,7 +314,13 @@
   function kr(n){ return nf.format(Math.round(n)) + " kr"; }
   function pc(n){ return (Math.round(n*10)/10).toFixed(1).replace('.',',') + " %"; }
   function $(id){ return document.getElementById(id); }
-  function byId(id){ return DATA.filter(function(d){return d.id===id;})[0]; }
+  var REAL = {}; // real properties looked up this session, keyed by "bfe<nr>"
+  function sameId(a,b){ return String(a)===String(b); }
+  function byId(id){
+    return DATA.filter(function(d){return sameId(d.id,id);})[0]
+      || REAL[id]
+      || (pipeline.filter(function(p){return sameId(p.id,id) && p.prop;})[0]||{}).prop;
+  }
   function tenure(p){ return YEAR - p.saleYear; }
   function energyHtml(l){
     var m={A:["#e6f7f0","#0f6e56"],B:["#e6f7f0","#0f6e56"],C:["#fdf2da","#854f0b"],D:["#fdf2da","#854f0b"],E:["#fdeaea","#a32d2d"],F:["#fdeaea","#a32d2d"],G:["#fdeaea","#a32d2d"]};
@@ -307,6 +330,7 @@
   /* ---- Lead score (partner's weighting) ---- */
   function leadScore(p){
     var s=0, r=[];
+    if(p.real) return {score:s, reasons:r}; // real registry data: no ejer-signals yet (EJF/Tinglysning)
     if(p.ownerType==="Privatperson" && p.ownerAge!==null && p.ownerAge>70){ s+=20; r.push({t:p.ownerAge+" år", hot:true}); }
     if(tenure(p)>15){ s+=20; r.push({t:"Ejertid "+tenure(p)+" år", hot:true}); }
     if(!p.ownerLivesHere){ s+=15; r.push({t:"Fraværende ejer", hot:true}); }
@@ -322,7 +346,7 @@
   pipeline.forEach(function(p){ if(STAGES.indexOf(p.stage)<0) p.stage=STAGES[0]; });
   function savePipe(){ try { localStorage.setItem('afkast_pipeline', JSON.stringify(pipeline)); } catch(e){} updatePipeCount(); }
   function inPipe(id){ return pipeline.some(function(p){return p.id===id;}); }
-  function addPipe(id){ if(!inPipe(id)){ pipeline.push({id:id, stage:"Ikke kontaktet", note:""}); savePipe(); toast("Gemt som lead"); } else { toast("Allerede i pipeline"); } renderDash(); }
+  function addPipe(id){ if(!inPipe(id)){ var rec={id:id, stage:"Ikke kontaktet", note:""}; if(REAL[id]) rec.prop=REAL[id]; pipeline.push(rec); savePipe(); toast("Gemt som lead"); } else { toast("Allerede i pipeline"); } renderDash(); }
   window.gemLead = function(id){ addPipe(id); };
   window.openBiz = function(id){ openDetail(id); };
   function updatePipeCount(){ var n=pipeline.length; $("pipe-n").textContent = n? "("+n+")":""; }
@@ -558,14 +582,23 @@
     var av=document.querySelector(".view.active");
     if(av && av.id!=="view-detail") detailReturn=av.id.replace("view-","");
     current=byId(id); var d=current;
+    if(!d){ toast("Ejendommen kunne ikke findes"); return; }
+    var vVur=d.vur!=null?kr(d.vur):"–", vTax=d.tax!=null?kr(d.tax):"–",
+        vHandel=d.saleYear?(d.saleYear+" · "+kr(d.lastSalePrice)):"– (kræver Tinglysning)",
+        vEnergy=d.energy?energyHtml(d.energy):"–", vZone=d.zone||"–", vYear=d.year||"–";
     $("detail-body").innerHTML =
       '<div class="grid2">'+
         '<div class="card facts">'+
-          '<div class="addr">⚲ '+d.addr+'</div><div class="sub">'+d.city+' · '+d.type+'</div>'+
+          '<div class="addr">⚲ '+d.addr+(d.real?'<span class="real-badge">✓ registerdata</span>':'')+'</div><div class="sub">'+d.city+' · '+d.type+'</div>'+
           '<div class="fgrid">'+
             fact("Ejer", d.ownerName)+fact("Ejerskabstype", d.ownerType+(d.ownerAge?", "+d.ownerAge+" år":""))+
-            fact("Areal", d.area+" m²")+fact("Boligenheder", d.units)+fact("Opført", d.year)+fact("Energimærke", energyHtml(d.energy))+
-            fact("Off. vurdering", kr(d.vur))+fact("Grundskyld / år", kr(d.tax))+fact("Seneste handel", d.saleYear+" · "+kr(d.lastSalePrice))+fact("Zone", d.zone)+
+            fact("Areal", d.area+" m²")+fact("Boligenheder", d.units)+fact("Opført", vYear)+fact("Energimærke", vEnergy)+
+            fact("Off. vurdering", vVur)+fact("Grundskyld / år", vTax)+fact("Seneste handel", vHandel)+fact("Zone", vZone)+
+            (d.real? fact("BFE-nummer", d.bfe)
+              +fact("Matrikel", d.matrikel? d.matrikel.ejerlavNavn+" "+d.matrikel.matrikelnr : "–")
+              +fact("Grundareal", d.grundareal!=null? d.grundareal+" m²" : "–")
+              +fact("Bygninger", (d.bygninger||[]).map(function(b){return b.anvendelse+(b.opført?" ("+b.opført+")":"");}).join(" · ")||"–")
+            : '')+
           '</div>'+
           '<button class="btn '+(inPipe(d.id)?'ghost':'')+'" style="margin-top:18px; width:100%;" id="pipe-btn">'+(inPipe(d.id)?'✓ I din pipeline':'+ Gem som lead')+'</button>'+
         '</div>'+
@@ -605,7 +638,8 @@
     var box=$("pipe-list"); box.innerHTML="";
     if(!pipeline.length){ box.innerHTML='<div class="card"><div class="empty">Din pipeline er tom. Find leads under “Find deals” og gem dem her.</div></div>'; return; }
     pipeline.forEach(function(p){
-      var d=byId(p.id), sc=leadScore(d).score, tv=tier(sc);
+      var d=byId(p.id); if(!d) return;
+      var sc=leadScore(d).score, tv=tier(sc);
       var el=document.createElement("div"); el.className="card prow";
       el.innerHTML='<div class="sc" style="color:'+tv[1]+'">'+sc+'</div>'+
         '<div class="pmain"><div class="pa2">'+d.addr+'</div><div class="pm2">'+d.city+' · '+d.type+' · '+d.ownerName+' ('+d.ownerType+(d.ownerAge?', '+d.ownerAge+' år':'')+')</div></div>'+
@@ -614,8 +648,8 @@
       el.addEventListener("click", function(e){ if(!e.target.closest("select,button")) openDetail(p.id); });
       box.appendChild(el);
     });
-    box.querySelectorAll("[data-stage2]").forEach(function(s){ s.addEventListener("change", function(){ pipeline.filter(function(x){return x.id==+s.getAttribute("data-stage2");})[0].stage=s.value; savePipe(); }); });
-    box.querySelectorAll("[data-rm2]").forEach(function(b){ b.addEventListener("click", function(){ pipeline=pipeline.filter(function(p){return p.id!=+b.getAttribute("data-rm2");}); savePipe(); renderList(); renderDash(); }); });
+    box.querySelectorAll("[data-stage2]").forEach(function(s){ s.addEventListener("change", function(){ var it=pipeline.filter(function(x){return sameId(x.id,s.getAttribute("data-stage2"));})[0]; if(it){ it.stage=s.value; savePipe(); } }); });
+    box.querySelectorAll("[data-rm2]").forEach(function(b){ b.addEventListener("click", function(){ pipeline=pipeline.filter(function(p){return !sameId(p.id,b.getAttribute("data-rm2"));}); savePipe(); renderList(); renderDash(); }); });
   }
 
   /* ---- Pipeline board ---- */
@@ -626,7 +660,8 @@
       var col=document.createElement("div"); col.className="col";
       col.innerHTML='<h3><span>'+stage+'</span><span class="n">'+items.length+'</span></h3>';
       items.forEach(function(p){
-        var d=byId(p.id), sc=leadScore(d).score, tv=tier(sc);
+        var d=byId(p.id); if(!d) return;
+        var sc=leadScore(d).score, tv=tier(sc);
         var c=document.createElement("div"); c.className="pcard"; c.setAttribute("draggable","true");
         c.innerHTML='<div style="display:flex; justify-content:space-between; align-items:start;"><div class="pa">'+d.addr+'</div><button class="rm" title="Fjern" data-rm="'+p.id+'">×</button></div>'+
           '<div class="pm">'+d.city+' · score <b style="color:'+tv[1]+'">'+sc+'</b> · '+d.ownerName+'</div>'+
@@ -639,13 +674,13 @@
       });
       col.addEventListener("dragover", function(e){ e.preventDefault(); e.dataTransfer.dropEffect="move"; col.classList.add("drag-over"); });
       col.addEventListener("dragleave", function(e){ if(!col.contains(e.relatedTarget)) col.classList.remove("drag-over"); });
-      col.addEventListener("drop", function(e){ e.preventDefault(); col.classList.remove("drag-over"); var id=+e.dataTransfer.getData("text/plain"); var it=pipeline.filter(function(x){return x.id===id;})[0]; if(it && it.stage!==stage){ it.stage=stage; savePipe(); renderBoard(); } });
+      col.addEventListener("drop", function(e){ e.preventDefault(); col.classList.remove("drag-over"); var id=e.dataTransfer.getData("text/plain"); var it=pipeline.filter(function(x){return sameId(x.id,id);})[0]; if(it && it.stage!==stage){ it.stage=stage; savePipe(); renderBoard(); } });
       board.appendChild(col);
     });
     if(!pipeline.length) board.innerHTML='<div class="empty" style="grid-column:1/-1; padding:50px 0;">Din pipeline er tom. Find leads under “Find deals” og gem dem her.</div>';
-    board.querySelectorAll("[data-rm]").forEach(function(b){ b.addEventListener("click", function(){ pipeline=pipeline.filter(function(p){return p.id!=+b.getAttribute("data-rm");}); savePipe(); renderBoard(); renderDash(); }); });
-    board.querySelectorAll("[data-stage]").forEach(function(s){ s.addEventListener("change", function(){ pipeline.filter(function(x){return x.id==+s.getAttribute("data-stage");})[0].stage=s.value; savePipe(); renderBoard(); }); });
-    board.querySelectorAll("[data-note]").forEach(function(t){ t.addEventListener("input", function(){ pipeline.filter(function(x){return x.id==+t.getAttribute("data-note");})[0].note=t.value; savePipe(); }); });
+    board.querySelectorAll("[data-rm]").forEach(function(b){ b.addEventListener("click", function(){ pipeline=pipeline.filter(function(p){return !sameId(p.id,b.getAttribute("data-rm"));}); savePipe(); renderBoard(); renderDash(); }); });
+    board.querySelectorAll("[data-stage]").forEach(function(s){ s.addEventListener("change", function(){ var it=pipeline.filter(function(x){return sameId(x.id,s.getAttribute("data-stage"));})[0]; if(it){ it.stage=s.value; savePipe(); renderBoard(); } }); });
+    board.querySelectorAll("[data-note]").forEach(function(t){ t.addEventListener("input", function(){ var it=pipeline.filter(function(x){return sameId(x.id,t.getAttribute("data-note"));})[0]; if(it){ it.note=t.value; savePipe(); } }); });
   }
 
   /* ---- Waitlist ---- */
@@ -653,8 +688,62 @@
   $("wait").addEventListener("click", function(e){ if(e.target===$("wait")) $("wait").classList.remove("open"); });
   $("wform").addEventListener("submit", function(e){ e.preventDefault(); $("wait").classList.remove("open"); toast("Tak! Vi skriver til dig når vi åbner."); });
 
+  /* ---- Real property lookup (adresse -> live registerdata via Worker) ---- */
+  function toProp(p){
+    var b0=(p.bygninger||[])[0]||{};
+    var areal=p.boligarealIAltM2||b0.bebyggetArealM2||0;
+    return { id:"bfe"+p.bfe, real:true,
+      addr:(p.adresse||"").split(",")[0], city:((p.adresse||"").split(",")[1]||"").trim(),
+      region:"", lat:p.koordinater?p.koordinater[1]:null, lng:p.koordinater?p.koordinater[0]:null,
+      type:p.ejendomstype||"Ejendom", area:areal, rooms:null,
+      units:(p.bygninger||[]).filter(function(b){return b.boligarealM2;}).length||1,
+      year:b0.opført||null, energy:null, vur:null, tax:null, saleYear:null, lastSalePrice:null, zone:null,
+      price:2500000, rent:Math.max(3000,Math.round(areal*1)*100), cost:Math.max(10000,Math.round(areal*0.25)*1000),
+      ownerName:"– (kræver EJF-certifikat)", ownerType:p.ejerforhold||"–", ownerAge:null, ownerLivesHere:true, ownerPropCount:null,
+      bfe:p.bfe, matrikel:p.matrikel, grundareal:p.matrikel?p.matrikel.grundarealM2:null, bygninger:p.bygninger||[] };
+  }
+  var lkTimer=null;
+  function lookupInit(){
+    var inp=$("lk-input"), box=$("lk-sugg");
+    if(!inp) return;
+    inp.addEventListener("input", function(){
+      clearTimeout(lkTimer);
+      var q=inp.value.trim();
+      if(q.length<3){ box.style.display="none"; return; }
+      lkTimer=setTimeout(function(){
+        fetch("https://api.dataforsyningen.dk/adgangsadresser/autocomplete?q="+encodeURIComponent(q)+"&per_side=6")
+          .then(function(r){return r.json();})
+          .then(function(list){
+            box.innerHTML="";
+            if(!list.length){ box.style.display="none"; return; }
+            list.forEach(function(s){
+              var el=document.createElement("div");
+              el.textContent=s.tekst;
+              el.addEventListener("click", function(){ inp.value=s.tekst; box.style.display="none"; doLookup(s.tekst); });
+              box.appendChild(el);
+            });
+            box.style.display="block";
+          }).catch(function(){ box.style.display="none"; });
+      },250);
+    });
+    document.addEventListener("click", function(e){ if(!e.target.closest(".lk-wrap")) box.style.display="none"; });
+  }
+  function doLookup(adresse){
+    toast("Henter registerdata…");
+    fetch(PROXY_URL+"/ejendom?adresse="+encodeURIComponent(adresse))
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+      .then(function(res){
+        if(!res.ok || res.j.error){ toast("Opslag fejlede: "+(res.j.error||"backend skal først opdateres")); return; }
+        var prop=toProp(res.j);
+        REAL[prop.id]=prop;
+        openDetail(prop.id);
+        toast("Registerdata hentet ✓");
+      })
+      .catch(function(){ toast("Opslag fejlede — er backend opdateret?"); });
+  }
+
   document.querySelectorAll(".segbtn button").forEach(function(b){ b.addEventListener("click", function(){ pipeView=b.getAttribute("data-pv"); document.querySelectorAll(".segbtn button").forEach(function(x){x.classList.toggle("active", x===b);}); renderPipeline(); }); });
-  initMap(); initFilters(); initAssistant(); renderDash(); savePipe();
+  initMap(); initFilters(); initAssistant(); lookupInit(); renderDash(); savePipe();
 })();
 </script>
 </body>
