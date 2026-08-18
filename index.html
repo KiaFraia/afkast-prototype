@@ -71,6 +71,11 @@
   .lk-sugg{position:absolute; left:0; right:0; top:46px; z-index:40; background:#fff; border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; box-shadow:0 8px 24px rgba(15,23,42,.10); display:none;}
   .lk-sugg div{padding:10px 14px; font-size:14px; cursor:pointer;}
   .lk-sugg div:hover{background:var(--bg2);}
+  .lk-sugg .lk-type{font-size:11.5px; color:var(--faint); margin-left:6px;}
+  .ef-list{max-height:190px; overflow:auto; margin-top:8px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2);}
+  .ef-item{padding:8px 12px; font-size:13px; cursor:pointer; border-bottom:1px solid var(--line);}
+  .ef-item:last-child{border-bottom:none;}
+  .ef-item:hover{background:#fff; color:var(--blue);}
   .real-badge{display:inline-block; font-size:11px; font-weight:600; background:var(--green-bg); color:var(--green); padding:2px 8px; border-radius:6px; margin-left:8px;}
   .asst-gear{border:none; background:none; cursor:pointer; font-size:17px; color:var(--muted);}
   .asst-form{display:flex; gap:8px;}
@@ -597,9 +602,22 @@
             (d.real? fact("BFE-nummer", d.bfe)
               +fact("Matrikel", d.matrikel? d.matrikel.ejerlavNavn+" "+d.matrikel.matrikelnr : "–")
               +fact("Grundareal", d.grundareal!=null? d.grundareal+" m²" : "–")
-              +fact("Bygninger", (d.bygninger||[]).map(function(b){return b.anvendelse+(b.opført?" ("+b.opført+")":"");}).join(" · ")||"–")
+              +(d.ejl? "" : fact("Bygninger", (d.bygninger||[]).map(function(b){return b.anvendelse+(b.opført?" ("+b.opført+")":"");}).join(" · ")||"–"))
+            : '')+
+            (d.real&&d.ejl?
+              fact("Ejerlejlighedsnr", d.ejl.nummer!=null?d.ejl.nummer:"–")
+              +fact("Tinglyst areal", d.ejl.tinglystArealM2!=null?d.ejl.tinglystArealM2+" m²":"–")
+              +fact("Enhedsareal (BBR)", d.ejl.enhedArealM2!=null?d.ejl.enhedArealM2+" m²":"–")
+              +fact("Værelser", d.ejl.værelser!=null?d.ejl.værelser:"–")
+              +fact("Fordelingstal", d.ejl.fordelingstal||"–")
+              +fact("Moderejendom (BFE)", d.ejl.parentBfe||"–")
             : '')+
           '</div>'+
+          (d.real&&d.ejl&&d.ejl.parentAdresse?
+            '<button class="btn ghost sm" id="parent-btn" data-adr="'+d.ejl.parentAdresse+'" style="margin-top:14px; width:100%;">Se hele ejendommen / ejerforeningen</button>' : '')+
+          (d.real&&d.ejerforening?
+            '<div style="margin-top:16px;"><div style="font-size:12px; color:var(--faint); font-weight:600; text-transform:uppercase; letter-spacing:.04em;">Opdelt i '+d.ejerforening.antalEjerlejligheder+' ejerlejligheder — klik for at åbne</div>'+
+            '<div class="ef-list">'+(d.ejerforening.lejligheder||[]).map(function(adr){return '<div class="ef-item" data-adr="'+adr+'">'+adr+'</div>';}).join("")+'</div></div>' : '')+
           '<button class="btn '+(inPipe(d.id)?'ghost':'')+'" style="margin-top:18px; width:100%;" id="pipe-btn">'+(inPipe(d.id)?'✓ I din pipeline':'+ Gem som lead')+'</button>'+
         '</div>'+
         '<div class="card calc">'+
@@ -612,6 +630,11 @@
       '</div>';
     ["price","rent","vac","down","rate","cost"].forEach(function(k){ $("s-"+k).addEventListener("input", compute); });
     $("pipe-btn").addEventListener("click", function(){ addPipe(d.id); openDetail(d.id); });
+    var pbtn=document.getElementById("parent-btn");
+    if(pbtn) pbtn.addEventListener("click", function(){ doLookup(pbtn.getAttribute("data-adr")); });
+    document.querySelectorAll("#detail-body .ef-item").forEach(function(el){
+      el.addEventListener("click", function(){ doLookup(el.getAttribute("data-adr")); });
+    });
     compute(); showView("detail");
   }
   function fact(k,v){ return '<div><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
@@ -691,16 +714,22 @@
   /* ---- Real property lookup (adresse -> live registerdata via Worker) ---- */
   function toProp(p){
     var b0=(p.bygninger||[])[0]||{};
-    var areal=p.boligarealIAltM2||b0.bebyggetArealM2||0;
+    var ejl=p.ejerlejlighed||null;
+    var areal = ejl ? (ejl.tinglystArealM2||ejl.enhedArealM2||0) : (p.boligarealIAltM2||b0.bebyggetArealM2||0);
+    var parts=(p.adresse||"").split(",");
+    var city=(parts.pop()||"").trim();
+    var addr=parts.join(",").trim()||p.adresse||"";
     return { id:"bfe"+p.bfe, real:true,
-      addr:(p.adresse||"").split(",")[0], city:((p.adresse||"").split(",")[1]||"").trim(),
+      addr:addr, city:city,
       region:"", lat:p.koordinater?p.koordinater[1]:null, lng:p.koordinater?p.koordinater[0]:null,
-      type:p.ejendomstype||"Ejendom", area:areal, rooms:null,
-      units:(p.bygninger||[]).filter(function(b){return b.boligarealM2;}).length||1,
+      type:p.ejendomstype||"Ejendom", area:areal, rooms:ejl?ejl.værelser:null,
+      units: p.ejerforening ? (p.ejerforening.antalEjerlejligheder||1)
+           : (ejl ? 1 : ((p.bygninger||[]).filter(function(b){return b.boligarealM2;}).length||1)),
       year:b0.opført||null, energy:null, vur:null, tax:null, saleYear:null, lastSalePrice:null, zone:null,
       price:2500000, rent:Math.max(3000,Math.round(areal*1)*100), cost:Math.max(10000,Math.round(areal*0.25)*1000),
       ownerName:"– (kræver EJF-certifikat)", ownerType:p.ejerforhold||"–", ownerAge:null, ownerLivesHere:true, ownerPropCount:null,
-      bfe:p.bfe, matrikel:p.matrikel, grundareal:p.matrikel?p.matrikel.grundarealM2:null, bygninger:p.bygninger||[] };
+      bfe:p.bfe, matrikel:p.matrikel, grundareal:p.matrikel?p.matrikel.grundarealM2:null, bygninger:p.bygninger||[],
+      ejl:ejl, ejerforening:p.ejerforening||null };
   }
   var lkTimer=null;
   function lookupInit(){
@@ -711,15 +740,26 @@
       var q=inp.value.trim();
       if(q.length<3){ box.style.display="none"; return; }
       lkTimer=setTimeout(function(){
-        fetch("https://api.dataforsyningen.dk/adgangsadresser/autocomplete?q="+encodeURIComponent(q)+"&per_side=6")
+        fetch("https://api.dataforsyningen.dk/autocomplete?q="+encodeURIComponent(q)+"&per_side=8&fuzzy=")
           .then(function(r){return r.json();})
           .then(function(list){
             box.innerHTML="";
             if(!list.length){ box.style.display="none"; return; }
             list.forEach(function(s){
               var el=document.createElement("div");
-              el.textContent=s.tekst;
-              el.addEventListener("click", function(){ inp.value=s.tekst; box.style.display="none"; doLookup(s.tekst); });
+              var tekst=(s.tekst||"").replace(/,\s*,/g, ",");
+              el.textContent=tekst;
+              if(s.type==="vejnavn"){ el.innerHTML=el.textContent+'<span class="lk-type">skriv husnr…</span>'; }
+              else if(s.type==="adgangsadresse"){ el.innerHTML=el.textContent+'<span class="lk-type">hele ejendommen — eller skriv etage…</span>'; }
+              el.addEventListener("click", function(){
+                if(s.type==="vejnavn"){
+                  inp.value=(s.forslagstekst||s.tekst);
+                  inp.dispatchEvent(new Event("input",{bubbles:true}));
+                  inp.focus();
+                } else {
+                  inp.value=tekst; box.style.display="none"; doLookup(tekst);
+                }
+              });
               box.appendChild(el);
             });
             box.style.display="block";

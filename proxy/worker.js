@@ -3,14 +3,10 @@
 // Routes:
 //   POST /                     {text} -> AI assistant: natural language -> search filters (Groq)
 //   GET  /ejendom?adresse=...  -> merged ejendomsprofil from the public registries
-//                                 (DAWA -> BFE -> BBR + Matriklen + EBR via Datafordeleren)
+//       - enhedsadresse (med etage/dør)  -> EJERLEJLIGHEDS-profil (lejlighedens egen BFE)
+//       - adgangsadresse/hus             -> moderejendom + evt. liste af ejerlejligheder
 //
-// Secrets (Settings -> Variables and Secrets, type Secret):
-//   GROQ_API_KEY  - Groq API key (assistant)
-//   DAF_USER      - Datafordeler tjenestebruger username
-//   DAF_PASS      - Datafordeler tjenestebruger password
-//
-// Only fixed, narrow operations are exposed — no open pass-through of any key.
+// Secrets: GROQ_API_KEY, DAF_USER, DAF_PASS
 
 const ALLOWED_ORIGIN = "https://kiafraia.github.io";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -19,10 +15,10 @@ const SYS = 'Du er assistent i en dansk ejendomsinvesteringsapp. Oversæt bruger
 
 const DAWA = "https://api.dataforsyningen.dk";
 const DAF = "https://services.datafordeler.dk";
-const ANVENDELSE = { 110: "Stuehus til landbrug", 120: "Fritliggende enfamilieshus", 121: "Sammenbygget enfamiliehus", 130: "Række-/kædehus", 131: "Række-/kædehus", 132: "Dobbelthus", 140: "Etagebolig-bygning", 190: "Anden helårsbeboelse", 320: "Erhverv (kontor/handel)", 321: "Kontor", 322: "Detailhandel", 330: "Restaurant/hotel", 910: "Garage", 920: "Carport", 930: "Udhus" };
+const ANVENDELSE = { 110: "Stuehus til landbrug", 120: "Fritliggende enfamilieshus", 121: "Sammenbygget enfamiliehus", 130: "Række-/kædehus", 131: "Række-/kædehus", 132: "Dobbelthus", 140: "Etagebolig", 190: "Anden helårsbeboelse", 320: "Erhverv (kontor/handel)", 321: "Kontor", 322: "Detailhandel", 330: "Restaurant/hotel", 910: "Garage", 920: "Carport", 930: "Udhus" };
 const EJERFORHOLD = { 10: "Privatpersoner", 20: "Alment boligselskab", 30: "Aktie-/anpartsselskab", 40: "Forening/legat/selvejende institution", 41: "Privat andelsboligforening", 50: "Staten", 60: "Region", 70: "Kommune", 80: "Andet", 90: "Ikke fastlagt", 99: "Ukendt" };
-const AKTIV_STATUS = ["6", "7"]; // 6=Opført, 7=Gældende; øvrige er historiske/nedrevne
-const EJENDOMSTYPE = { 1: "Samlet fast ejendom", 2: "Ejerlejlighed", 3: "Bygning på fremmed grund" };
+const EJENDOMSTYPE = { 1: "Samlet fast ejendom", 2: "Bygning på fremmed grund", 3: "Ejerlejlighed" };
+const AKTIV_STATUS = ["6", "7"]; // 6=Opført, 7=Gældende
 
 function cors() {
   return {
@@ -50,21 +46,82 @@ function dafUrl(path, params, env) {
   return u.toString();
 }
 
+async function jordstykkeInfo(js) {
+  if (!js) return null;
+  const j = await getJson(`${DAWA}/jordstykker/${js.ejerlav.kode}/${encodeURIComponent(js.matrikelnr)}`);
+  return {
+    ejerlavKode: j.ejerlav.kode, ejerlavNavn: j.ejerlav.navn, matrikelnr: j.matrikelnr,
+    grundarealM2: j.registreretareal ?? null, featureid: j.featureid ?? null,
+    bfe: j.bfenummer ?? j.sfeejendomsnr ?? null,
+  };
+}
+
+// Ejerlejlighed: unit address -> the apartment's OWN BFE via BBR enhed
+async function buildUnitProfile(a, env) {
+  const ag = a.adgangsadresse;
+  const enhListe = await getJson(dafUrl("BBR/BBRPublic/1/rest/enhed", { adresseIdentificerer: a.id }, env)).catch(() => []);
+  const enh = (enhListe || []).filter((e) => AKTIV_STATUS.includes(e.status))[0];
+  const rel = enh && enh.ejerlejlighedList && enh.ejerlejlighedList[0] && enh.ejerlejlighedList[0].ejerlejlighed;
+  if (!rel || !rel.bfeNummer) return null; // not an ejerlejlighed -> caller falls back to parent flow
+
+  const mat = await jordstykkeInfo(ag.jordstykke).catch(() => null);
+  let matEjl = null;
+  if (mat?.bfe) {
+    try {
+      const r = await getJson(dafUrl("Matriklen2/Matrikel/2.0.0/rest/Ejerlejlighed", { SFEBFEnr: mat.bfe }, env));
+      matEjl = (r.features || []).map((f) => f.properties).find((p) => p.BFEnummer === rel.bfeNummer) || null;
+    } catch (e) {}
+  }
+
+  const parentAdresse = ag.vejstykke && ag.postnummer
+    ? `${ag.vejstykke.navn} ${ag.husnr}, ${ag.postnummer.nr} ${ag.postnummer.navn}` : null;
+
+  return {
+    adresse: a.adressebetegnelse,
+    bfe: rel.bfeNummer,
+    kommune: { kode: ag.kommune?.kode, navn: ag.kommune?.navn },
+    koordinater: ag.adgangspunkt?.koordinater ?? null,
+    matrikel: mat ? { ejerlavKode: mat.ejerlavKode, ejerlavNavn: mat.ejerlavNavn, matrikelnr: mat.matrikelnr, grundarealM2: mat.grundarealM2 } : null,
+    ejendomstype: "Ejerlejlighed",
+    ejerforhold: EJERFORHOLD[rel.ejendommensEjerforholdskode] || rel.ejendommensEjerforholdskode || null,
+    bygninger: [],
+    boligarealIAltM2: enh.enh026EnhedensSamledeAreal ?? null,
+    ejerlejlighed: {
+      nummer: matEjl?.ejerlejlighedsnummer ?? rel.ejerlejlighedsnummer ?? null,
+      enhedArealM2: enh.enh026EnhedensSamledeAreal ?? null,
+      tinglystArealM2: matEjl?.samletAreal ?? null,
+      værelser: enh.enh031AntalVærelser ?? null,
+      anvendelse: ANVENDELSE[enh.enh020EnhedensAnvendelse] || enh.enh020EnhedensAnvendelse || null,
+      fordelingstal: matEjl && matEjl.fordelingstalTaeller != null ? `${matEjl.fordelingstalTaeller}/${matEjl.fordelingstalNaevner}` : null,
+      parentBfe: mat?.bfe ?? null,
+      parentAdresse,
+    },
+    ejerforening: null,
+    ejer: null,
+    kilder: ["DAWA", "BBR", "Matriklen2"],
+  };
+}
+
 async function buildProfile(query, env) {
-  const hits = await getJson(`${DAWA}/adgangsadresser?q=${encodeURIComponent(query)}&per_side=1`);
+  const q = query.replace(/,\s*,/g, ",").trim();
+
+  // 1) unit-level match first (enhedsadresse with etage/dør)
+  let unitHits = [];
+  try { unitHits = await getJson(`${DAWA}/adresser?q=${encodeURIComponent(q)}&per_side=2`); } catch (e) {}
+  if (unitHits.length === 1) {
+    const unit = await buildUnitProfile(unitHits[0], env);
+    if (unit) return unit;
+  }
+
+  // 2) parent / adgangsadresse flow
+  const hits = await getJson(`${DAWA}/adgangsadresser?q=${encodeURIComponent(q)}&per_side=1`);
   if (!hits.length) throw new Error("Ingen adresse fundet");
   const a = hits[0];
-  const js = a.jordstykke
-    ? await getJson(`${DAWA}/jordstykker/${a.jordstykke.ejerlav.kode}/${encodeURIComponent(a.jordstykke.matrikelnr)}`)
-    : null;
-  const bfe = js?.bfenummer ?? js?.sfeejendomsnr ?? null;
+  const mat = await jordstykkeInfo(a.jordstykke).catch(() => null);
+  const bfe = mat?.bfe ?? null;
   if (!bfe) throw new Error("Kunne ikke finde BFE for adressen");
 
-  // Buildings: query by jordstykke (parcel) — husnummer misses buildings on
-  // multi-address properties. Fall back to husnummer if no parcel id.
-  const bygQuery = js?.featureid
-    ? { jordstykke: js.featureid }
-    : { husnummer: a.id };
+  const bygQuery = mat?.featureid ? { jordstykke: mat.featureid } : { husnummer: a.id };
   const [bygninger, relation, sfe] = await Promise.all([
     getJson(dafUrl("BBR/BBRPublic/1/rest/bygning", bygQuery, env)),
     getJson(dafUrl("BBR/BBRPublic/1/rest/ejendomsrelation", { bfeNummer: bfe }, env)),
@@ -86,24 +143,44 @@ async function buildProfile(query, env) {
     .sort((x, y) => (x.nr ?? 99) - (y.nr ?? 99));
 
   const rel = Array.isArray(relation) ? relation[0] : relation;
+  const sfeProps = sfe?.features?.[0]?.properties ?? null;
+  const ejlListe = sfeProps?.ejerlejlighed || [];
+  const opdelt = sfeProps?.hovedejendomOpdeltIEjerlejligheder === true || ejlListe.length > 0;
+
+  // Ejerforening: list the individual unit addresses on the parcel (clickable in app)
+  let ejerforening = null;
+  if (opdelt && mat) {
+    try {
+      const units = await getJson(`${DAWA}/adresser?ejerlavkode=${mat.ejerlavKode}&matrikelnr=${encodeURIComponent(mat.matrikelnr)}&struktur=mini&per_side=200`);
+      ejerforening = {
+        antalEjerlejligheder: ejlListe.length || units.length,
+        lejligheder: units.map((u) => u.betegnelse).sort(),
+      };
+    } catch (e) {
+      ejerforening = { antalEjerlejligheder: ejlListe.length, lejligheder: [] };
+    }
+  }
+
   return {
     adresse: a.adressebetegnelse,
     bfe,
     kommune: { kode: a.kommune?.kode, navn: a.kommune?.navn },
     koordinater: a.adgangspunkt?.koordinater ?? null,
-    matrikel: js ? { ejerlavKode: js.ejerlav.kode, ejerlavNavn: js.ejerlav.navn, matrikelnr: js.matrikelnr, grundarealM2: js.registreretareal ?? null } : null,
+    matrikel: mat ? { ejerlavKode: mat.ejerlavKode, ejerlavNavn: mat.ejerlavNavn, matrikelnr: mat.matrikelnr, grundarealM2: mat.grundarealM2 } : null,
     ejendomstype: rel ? EJENDOMSTYPE[rel.ejendomstype] || rel.ejendomstype : null,
     ejerforhold: rel ? EJERFORHOLD[rel.ejendommensEjerforholdskode] || rel.ejendommensEjerforholdskode : null,
-    sfeBekræftet: sfe?.features?.[0]?.properties?.BFEnummer === bfe,
+    sfeBekræftet: sfeProps?.BFEnummer === bfe,
     bygninger: aktive,
     boligarealIAltM2: aktive.reduce((s, b) => s + (b.boligarealM2 || 0), 0),
+    ejerlejlighed: null,
+    ejerforening,
     ejer: null, // navne kræver EJF certifikat-adgang
     kilder: ["DAWA", "BBR", "Matriklen2"],
   };
 }
 
 async function cachedProfile(query, env) {
-  const key = new Request("https://cache.internal/ejendom?q=" + encodeURIComponent(query.trim().toLowerCase()));
+  const key = new Request("https://cache.internal/ejendom?v=2&q=" + encodeURIComponent(query.trim().toLowerCase()));
   const cache = typeof caches !== "undefined" ? caches.default : null;
   if (cache) {
     const hit = await cache.match(key);
