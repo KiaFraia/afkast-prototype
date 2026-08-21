@@ -8,13 +8,19 @@
 //
 // Secrets: GROQ_API_KEY, DAF_USER, DAF_PASS
 
-const ALLOWED_ORIGIN = "https://kiafraia.github.io";
+// Sider der må kalde denne worker. Begge GitHub Pages-adresser står her, så
+// prototypen virker uanset hvilken konto den er udgivet fra.
+const ALLOWED_ORIGINS = [
+  "https://kiafraia.github.io",
+  "https://ejendoms.github.io",
+];
+const ALLOWED_ORIGIN = ALLOWED_ORIGINS[0]; // svar-default når origin ikke genkendes
 // Lokal udvikling: en side på localhost må også kalde, ellers blokerer browseren
 // alle opslag når man kører index.html fra sin egen maskine.
 const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 function tilladtOrigin(request) {
   const o = request && request.headers.get("Origin");
-  return o && (o === ALLOWED_ORIGIN || LOCAL_ORIGIN.test(o)) ? o : ALLOWED_ORIGIN;
+  return o && (ALLOWED_ORIGINS.includes(o) || LOCAL_ORIGIN.test(o)) ? o : ALLOWED_ORIGIN;
 }
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL = "llama-3.1-8b-instant";
