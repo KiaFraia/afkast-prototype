@@ -81,6 +81,46 @@ function opgørEnheder(liste) {
   };
 }
 
+// Ejeroplysninger fra Geodatastyrelsens eget endpoint bag matriklen.dk.
+// Tinglyste ejere er offentlige i Danmark og vises der uden login.
+//
+// ADVARSEL: Cache-Control-headeren er ikke valgfri. Deres CDN cacher svaret på
+// stien alene og ser bort fra bfe-parameteren, så et almindeligt kald returnerer
+// den ejendom nogen sidst slog op — altså en FORKERT ejer. Verificeret: samme
+// bfe gav to forskellige svar alt efter om headeren var med.
+// Headeren kan ikke sendes fra en browser (preflight svarer uden CORS-headere),
+// så opslaget skal blive her på serveren.
+async function hentEjere(bfe) {
+  if (!bfe) return null;
+  try {
+    const r = await fetch(`https://api.matriklen.dk/api/v3.2/BfeEjer?bfe=${encodeURIComponent(bfe)}`, {
+      headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" },
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    const raa = Array.isArray(d.ejere) ? d.ejere : [];
+    // type "Fiktiv" er ikke en ejer, men en note som "Opdelt i ejerlejligheder"
+    const rigtige = raa.filter((e) => e.type !== "Fiktiv");
+    if (!rigtige.length) {
+      const note = raa[0] && raa[0].navn;
+      return note ? { note } : null;
+    }
+    return {
+      antal: rigtige.length,
+      liste: rigtige.map((e) => ({
+        navn: e.navn ?? null,
+        type: e.type ?? null,
+        ejerforhold: EJERFORHOLD[e.ejerforholdskode] || e.ejerforholdskode || null,
+        andel: e.faktiskEjerandel ? `${e.faktiskEjerandel.tæller}/${e.faktiskEjerandel.nævner}` : null,
+        overtagelsesdato: e.overtagelsesdato ?? null,
+        tinglysningsdato: e.tinglysningsdato ?? null,
+      })),
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
 async function jordstykkeInfo(js) {
   if (!js) return null;
   const j = await getJson(`${DAWA}/jordstykker/${js.ejerlav.kode}/${encodeURIComponent(js.matrikelnr)}`);
@@ -134,8 +174,8 @@ async function buildUnitProfile(a, env) {
       parentAdresse,
     },
     ejerforening: null,
-    ejer: null,
-    kilder: ["DAWA", "BBR", "Matriklen2"],
+    ejer: await hentEjere(rel.bfeNummer),
+    kilder: ["DAWA", "BBR", "Matriklen2", "Matriklen.dk (ejere)"],
   };
 }
 
@@ -244,8 +284,8 @@ async function buildProfile(query, env) {
     })),
     ejerlejlighed: null,
     ejerforening,
-    ejer: null, // navne kræver EJF certifikat-adgang
-    kilder: ["DAWA", "BBR", "Matriklen2"],
+    ejer: await hentEjere(bfe),
+    kilder: ["DAWA", "BBR", "Matriklen2", "Matriklen.dk (ejere)"],
   };
 }
 

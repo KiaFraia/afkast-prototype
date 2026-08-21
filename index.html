@@ -878,7 +878,13 @@
     // Adresse, BFE og anvendelse står allerede i toppen — her kun det der ikke
     // gentages. Ejendomsformen tages med når den siger noget adressen ikke gør.
     var ejendomLinjer=
-      kinfo("Ejer", ejerNavnEllerNull(d))+
+      // Flere ejere vises hver for sig med andel og overtagelsesdato
+      ((d.ejere&&d.ejere.length)
+        ? d.ejere.map(function(e){
+            return kinfo("Ejer"+(d.ejere.length>1? " ("+e.andel+")" : ""),
+              e.navn+(e.overtagelsesdato? ' <span class="pop-dim">overtaget '+e.overtagelsesdato.split("-").reverse().join(".")+'</span>' : ""));
+          }).join("")
+        : kinfo("Ejer", ejerNavnEllerNull(d)))+
       kinfo("Ejerforhold", d.ownerType)+
       (d.ejerforening? kinfo("Ejendomsform", "Opdelt i "+d.ejerforening.antalEjerlejligheder+" ejerlejligheder") : "")+
       kinfo("Opført", d.year)+
@@ -1236,7 +1242,11 @@
       // Når worker'en leverer dem, falder de på plads her uden andre ændringer.
       vur:v.ejendomsvaerdi, grundvaerdi:v.grundvaerdi, evskat:v.ejendomsvaerdiskat, tax:v.grundskyld,
       price:2500000, rent:Math.max(3000,Math.round(areal*1)*100), cost:Math.max(10000,Math.round(areal*0.25)*1000),
-      ownerName:"– (kræver EJF-certifikat)", ownerType:p.ejerforhold||"–", ownerAge:null, ownerLivesHere:true, ownerPropCount:null,
+      ownerName:(p.ejer&&p.ejer.liste&&p.ejer.liste.length)
+        ? p.ejer.liste.map(function(e){ return e.navn+(e.andel&&e.andel!=="1/1"? " ("+e.andel+")" : ""); }).join(", ")
+        : ((p.ejer&&p.ejer.note) || "– (kræver EJF-certifikat)"),
+      ejere:(p.ejer&&p.ejer.liste)||null,
+      ownerType:p.ejerforhold||"–", ownerAge:null, ownerLivesHere:true, ownerPropCount:null,
       bfe:p.bfe, matrikel:p.matrikel, grundareal:p.matrikel?p.matrikel.grundarealM2:null, bygninger:p.bygninger||[],
       enheder:p.enheder||null, enhedsliste:p.enhedsliste||null,
       ejl:ejl, ejerforening:p.ejerforening||null };
