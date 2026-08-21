@@ -821,8 +821,6 @@
     if(!d.zone) mangler.push("Zone");
     if(!d.year) mangler.push("Opførelsesår");
     // Identitetslinjen under adressen: matrikel · kommune · BFE
-    var byg0=(d.bygninger||[])[0]||{};
-    var anvendelse=byg0.anvendelse||d.type||"";
     var idDele=[];
     if(d.matrikel) idDele.push("Matr.nr. "+d.matrikel.matrikelnr+" "+d.matrikel.ejerlavNavn);
     // "Københavns Kommune", men "Vordingborg Kommune" — kun hovedstaden bøjes
@@ -867,12 +865,13 @@
     var antalEnh=(enh&&enh.bolig!=null? enh.bolig+(enh.erhverv||0) : d.units)||null;
 
     // Ejendommen-kortet
+    // Adresse, BFE og anvendelse står allerede i toppen — her kun det der ikke
+    // gentages. Ejendomsformen tages med når den siger noget adressen ikke gør.
     var ejendomLinjer=
-      kinfo("Beliggende", d.addr+(d.city? ", "+d.city : "")+(ejl? " (ejerlejlighed)" : (d.ejerforening? " (opdelt i ejerlejligheder)":"")))+
-      kinfo("BFE-nr", d.bfe)+
-      kinfo("Ejerforhold", d.ownerType)+
       kinfo("Ejer", ejerNavnEllerNull(d))+
-      kinfo("Anvendelse", anvendelse+(d.year?" ("+d.year+")":""))+
+      kinfo("Ejerforhold", d.ownerType)+
+      (d.ejerforening? kinfo("Ejendomsform", "Opdelt i "+d.ejerforening.antalEjerlejligheder+" ejerlejligheder") : "")+
+      kinfo("Opført", d.year)+
       kinfo("Energimærke", d.energy?energyHtml(d.energy):null)+
       kinfo("Zone", d.zone);
 
