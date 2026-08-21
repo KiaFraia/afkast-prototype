@@ -145,15 +145,22 @@ async function buildProfile(query, env) {
   // 1) unit-level match first (enhedsadresse with etage/dør)
   let unitHits = [];
   try { unitHits = await getJson(`${DAWA}/adresser?q=${encodeURIComponent(q)}&per_side=2`); } catch (e) {}
+  let a = null;
   if (unitHits.length === 1) {
     const unit = await buildUnitProfile(unitHits[0], env);
     if (unit) return unit;
+    // Enheden findes, men er ikke en ejerlejlighed — fx en lejebolig. Brug dens
+    // egen adgangsadresse. En tekstsøgning med etage og dør giver aldrig træf i
+    // adgangsadresser, og gav derfor "Ingen adresse fundet" for hele ejendomme.
+    a = unitHits[0].adgangsadresse || null;
   }
 
   // 2) parent / adgangsadresse flow
-  const hits = await getJson(`${DAWA}/adgangsadresser?q=${encodeURIComponent(q)}&per_side=1`);
-  if (!hits.length) throw new Error("Ingen adresse fundet");
-  const a = hits[0];
+  if (!a) {
+    const hits = await getJson(`${DAWA}/adgangsadresser?q=${encodeURIComponent(q)}&per_side=1`);
+    if (!hits.length) throw new Error("Ingen adresse fundet");
+    a = hits[0];
+  }
   const mat = await jordstykkeInfo(a.jordstykke).catch(() => null);
   const bfe = mat?.bfe ?? null;
   if (!bfe) throw new Error("Kunne ikke finde BFE for adressen");

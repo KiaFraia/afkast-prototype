@@ -103,10 +103,10 @@
   .asst-forslag-t{font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:9px;}
   .asst-actions{display:flex; align-items:center; gap:10px; margin-top:12px;}
   .asst-src{font-size:11.5px; color:var(--faint); margin-left:auto;}
+  .leaflet-popup-content{margin:9px 11px; font-size:12.5px; line-height:1.45;}
   .pop-dim{color:var(--faint);}
-  .pop-btn{margin-top:10px; width:100%; font:inherit; font-size:13px; font-weight:500; cursor:pointer; border-radius:8px; padding:7px 12px; border:1px solid var(--blue); background:var(--blue); color:#fff;}
+  .pop-btn{margin-top:8px; width:100%; font:inherit; font-size:12.5px; font-weight:500; cursor:pointer; border-radius:7px; padding:5px 10px; border:1px solid var(--blue); background:var(--blue); color:#fff;}
   .pop-btn:hover{background:var(--blue-dark); border-color:var(--blue-dark);}
-  .pop-body{margin-top:8px; padding-top:8px; border-top:1px solid var(--line);}
   .legend{display:flex; gap:16px; font-size:12.5px; color:var(--muted); margin:10px 2px 0;}
   .legend span{display:inline-flex; align-items:center; gap:6px;}
   .dot{width:10px; height:10px; border-radius:50%; display:inline-block;}
@@ -475,11 +475,10 @@
      Ejendomstype og enhedsfordeling kommer fra BBR via vores Worker-proxy. */
   var jsCache = {};
 
+  // Popup'en viser kun ejendommen — matrikelnummer, ejerlav, grundareal og BFE
+  // står allerede på ejendomssiden, og fyldte popup'en unødigt op.
   function matrikelPopup(p, krop){
-    var h='<b>Matr.nr. '+(p.matrikelnr||"–")+'</b><br><span class="pop-dim">'+(p.ejerlavnavn||"")+'</span>'+
-      (p.registreretareal!=null? '<br>Grundareal: '+nf.format(p.registreretareal)+" m²" : "")+
-      (p.bfenummer? '<br>BFE-nummer: '+p.bfenummer : "");
-    return h+'<div class="pop-body">'+(krop||'<span class="pop-dim">Henter ejendomsdata…</span>')+'</div>';
+    return krop || '<span class="pop-dim">Henter ejendomsdata…</span>';
   }
 
   function bygningstype(prof){
@@ -586,7 +585,7 @@
       style:base,
       onEachFeature:function(f,l){
         var p=f.properties||{};
-        l.bindPopup(matrikelPopup(p), {minWidth:230});
+        l.bindPopup(matrikelPopup(p), {minWidth:170, maxWidth:230});
         l.on('popupopen', function(){ matrikelPopupAaben=true; enrichJordstykke(l, p); });
         l.on('popupclose', function(){ matrikelPopupAaben=false; scheduleMatrikel(); });
         l.on('mouseover', function(){ l.setStyle({weight:2.5, fillOpacity:.20}); });
@@ -669,7 +668,7 @@
   }
 
   /* ---- AI assistant (natural language -> filters, hosted open model, OpenAI-compatible) ---- */
-  var PROXY_URL = "https://purple-tree-3fd5.kiakafaei.workers.dev"; // Cloudflare Worker proxy (server-side Groq key)
+  var PROXY_URL = ""; // TEMP STUB
   var OAI_BASE_DEFAULT = "https://api.groq.com/openai/v1";
   var OAI_MODEL_DEFAULT = "llama-3.1-8b-instant";
   function oaiBase(){ try{ return localStorage.getItem('afkast_oai_base')||OAI_BASE_DEFAULT; }catch(e){ return OAI_BASE_DEFAULT; } }
@@ -938,7 +937,7 @@
       // undersøge omkringliggende ejendomme uden at gå tilbage til kortet.
       onEachFeature:function(f,l){
         var p=f.properties||{};
-        l.bindPopup(matrikelPopup(p), {minWidth:230});
+        l.bindPopup(matrikelPopup(p), {minWidth:170, maxWidth:230});
         l.on('popupopen', function(){ enrichJordstykke(l, p); });
         l.on('mouseover', function(){ l.setStyle({weight:2.5, fillOpacity:.18}); });
         l.on('mouseout',  function(){ l.setStyle(grund); });
@@ -1005,6 +1004,32 @@
   /* ---- Alle enheder på hovedejendommen ----
      Adresserne hentes fra DAWA på ejerlav + matrikelnr. Det virker både når man
      står på hovedejendommen og på en enkelt ejerlejlighed, og kræver ingen nøgle. */
+  var MAKS_ENKELTOPSLAG = 12;
+
+  // Ét profilopslag pr. enhed, i rækkefølge så backenden ikke rammes af et
+  // stormløb. Svarene caches 24 timer i worker'en, så gensyn er billige.
+  function hentArealEnkeltvis(adr){
+    var i=0;
+    function naeste(){
+      if(i>=adr.length) return;
+      var n=i++, celle=$("areal-"+n);
+      if(!celle){ naeste(); return; }
+      fetch(PROXY_URL+"/ejendom?adresse="+encodeURIComponent(adr[n].betegnelse||""))
+        .then(function(r){ return r.ok? r.json() : null; })
+        .catch(function(){ return null; })
+        .then(function(prof){
+          var m = prof && !prof.error
+            ? ((prof.enheder && prof.enheder.boligArealM2) != null ? prof.enheder.boligArealM2
+              : (prof.ejerlejlighed && prof.ejerlejlighed.enhedArealM2 != null ? prof.ejerlejlighed.enhedArealM2
+              : (prof.boligarealIAltM2 || null)))
+            : null;
+          celle.innerHTML = m!=null ? nf.format(m)+" m²" : '<span class="dim">–</span>';
+          naeste();
+        });
+    }
+    naeste();
+  }
+
   function indlaesEnheder(d){
     var kort=$("enheder-kort"), liste=$("enheder-liste");
     if(!kort || !liste || !d.matrikel || !d.matrikel.ejerlavKode) return;
@@ -1023,19 +1048,25 @@
         adr.sort(function(a,b){ return (a.betegnelse||"").localeCompare(b.betegnelse||"", "da"); });
         $("enheder-fine").textContent = adr.length+" enheder · klik en række for at åbne";
 
-        var rk=adr.map(function(a){
+        // Uden BBR-enhedslisten fra worker'en kan arealet hentes ét opslag ad gangen.
+        // Kun for små ejendomme — på en boligforening med 40+ enheder ville det
+        // betyde lige så mange kald til backenden.
+        var enkeltvis = !harAreal && adr.length<=MAKS_ENKELTOPSLAG;
+        var visAreal = harAreal || enkeltvis;
+
+        var rk=adr.map(function(a,i){
           var t=a.betegnelse||"", her=t.toLowerCase()===mig, e=pr[a.id]||{};
-          var areal = e.boligArealM2!=null? e.boligArealM2+" m²" : (e.samletArealM2!=null? e.samletArealM2+" m²" : "–");
+          var areal = e.boligArealM2!=null? e.boligArealM2+" m²" : (e.samletArealM2!=null? e.samletArealM2+" m²" : null);
           return '<tr class="etab-r'+(her?' her':'')+'" data-adr="'+t+'">'+
             '<td class="adr">'+t+(her?' <span class="ef-her">du er her</span>':'')+'</td>'+
-            (harAreal? '<td class="num">'+areal+'</td>' : '')+
+            (visAreal? '<td class="num" id="areal-'+i+'">'+(areal||'<span class="dim">…</span>')+'</td>' : '')+
             '<td class="dim">–</td><td class="dim">–</td><td class="num dim">–</td>'+
           '</tr>';
         }).join("");
 
         liste.innerHTML =
           '<table class="etab"><thead><tr>'+
-            '<th>Adresse</th>'+(harAreal? '<th class="num">Beboelsesareal</th>' : '')+
+            '<th>Adresse</th>'+(visAreal? '<th class="num">Beboelsesareal</th>' : '')+
             '<th>Ejer</th><th>Seneste handel</th><th class="num">Handelspris</th>'+
           '</tr></thead><tbody>'+rk+'</tbody></table>';
 
@@ -1044,8 +1075,12 @@
         });
         $("enheder-note").textContent = harAreal
           ? "Ejer og handelshistorik pr. enhed kræver adgang til EJF og Tinglysning."
-          : "Areal, ejer og handelshistorik pr. enhed kræver adgang til BBR-enheder, EJF og Tinglysning.";
+          : (enkeltvis
+            ? "Ejer og handelshistorik pr. enhed kræver adgang til EJF og Tinglysning."
+            : "Areal, ejer og handelshistorik pr. enhed kræver adgang til BBR-enheder, EJF og Tinglysning.");
         kort.style.display="";
+
+        if(enkeltvis) hentArealEnkeltvis(adr);
       })
       .catch(function(){});
   }
