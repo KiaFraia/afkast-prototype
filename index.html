@@ -844,7 +844,6 @@
     var stam=
       kfelt(d.energy?energyHtml(d.energy):null, "Energimærke")+
       kfelt(d.zone, "Zone")+
-      kfelt(ejl? ejl.parentBfe : null, "Hovedejendom (BFE)")+
       (!ejl && (d.bygninger||[]).length?
         kfelt(d.bygninger.map(function(b){return b.anvendelse+(b.opført?" ("+b.opført+")":"");}).join(" · "), "Bygninger") : "");
 
