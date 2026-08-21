@@ -81,6 +81,7 @@
   .etab{width:100%; border-collapse:collapse; font-size:13px;}
   .etab th{position:sticky; top:0; background:var(--bg2); text-align:left; font-weight:600; color:var(--muted); font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; padding:8px 12px; border-bottom:1px solid var(--line); white-space:nowrap;}
   .etab td{padding:8px 12px; border-bottom:1px solid var(--line); white-space:nowrap;}
+  .etab td.adr{white-space:normal; min-width:220px;} /* adressen må ombryde, så tallene til højre aldrig klippes */
   .etab tr:last-child td{border-bottom:none;}
   .etab .num{text-align:right;}
   .etab .dim{color:var(--faint);}
@@ -1011,19 +1012,11 @@
         adr.sort(function(a,b){ return (a.betegnelse||"").localeCompare(b.betegnelse||"", "da"); });
         $("enheder-fine").textContent = adr.length+" enheder · klik en række for at åbne";
 
-        // Gade og postnummer er ens for alle rækker — vejnavnet tages kun med hvis
-        // ejendommen faktisk har flere veje, ellers fylder det bare.
-        var flereVeje = adr.some(function(a){ return a.vejnavn!==adr[0].vejnavn; });
-        function enhedLabel(a){
-          var etd=((a.etage? a.etage+"." : "")+(a.dør? " "+a.dør : "")).trim();
-          return (flereVeje? (a.vejnavn||"")+" " : "")+(a.husnr||"")+(etd? ", "+etd : "");
-        }
-
         var rk=adr.map(function(a){
           var t=a.betegnelse||"", her=t.toLowerCase()===mig, e=pr[a.id]||{};
           var areal = e.boligArealM2!=null? e.boligArealM2+" m²" : (e.samletArealM2!=null? e.samletArealM2+" m²" : "–");
-          return '<tr class="etab-r'+(her?' her':'')+'" data-adr="'+t+'" title="'+t+'">'+
-            '<td>'+enhedLabel(a)+(her?' <span class="ef-her">du er her</span>':'')+'</td>'+
+          return '<tr class="etab-r'+(her?' her':'')+'" data-adr="'+t+'">'+
+            '<td class="adr">'+t+(her?' <span class="ef-her">du er her</span>':'')+'</td>'+
             (harAreal? '<td class="num">'+areal+'</td>' : '')+
             '<td class="dim">–</td><td class="dim">–</td><td class="num dim">–</td>'+
           '</tr>';
@@ -1031,7 +1024,7 @@
 
         liste.innerHTML =
           '<table class="etab"><thead><tr>'+
-            '<th>Enhed</th>'+(harAreal? '<th class="num">Beboelsesareal</th>' : '')+
+            '<th>Adresse</th>'+(harAreal? '<th class="num">Beboelsesareal</th>' : '')+
             '<th>Ejer</th><th>Seneste handel</th><th class="num">Handelspris</th>'+
           '</tr></thead><tbody>'+rk+'</tbody></table>';
 
