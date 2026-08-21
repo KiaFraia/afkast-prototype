@@ -1179,12 +1179,10 @@
         openDetail(prop.id);
         toast("Registerdata hentet ✓");
       })
-      // Et afvist fetch her betyder næsten altid at browseren blokerede kaldet,
-      // ikke at backenden fejler. Sig hvad der reelt sker.
+      // Browseren afslører ikke om et fetch fejlede på CORS eller på netværk, men
+      // i praksis er årsagen at worker'en ikke tillader den adresse siden kører på.
       .catch(function(){
-        toast(/^https?:\/\/(localhost|127\.0\.0\.1)/.test(location.origin)
-          ? "Blokeret lokalt: backendens CORS tillader kun det live site"
-          : "Kunne ikke nå backenden — tjek din forbindelse");
+        toast("Backenden tillader ikke opslag fra "+location.hostname+" — worker.js skal deployes i Cloudflare");
       });
   }
 
