@@ -139,10 +139,17 @@
   .mangler b{font-weight:600;}
   /* ejendomsside: kort til højre, datakort til venstre */
   .dhead{display:flex; align-items:flex-start; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:18px;}
-  .dhead .addr{display:flex; align-items:center; gap:9px; font-weight:600; font-size:21px; letter-spacing:-0.01em;}
-  .dhead .ids{color:var(--muted); font-size:13px; margin-top:4px;}
-  .dchips{display:flex; flex-wrap:wrap; gap:8px; margin-top:13px;}
-  .dchip{display:inline-flex; align-items:center; gap:6px; font-size:13px; padding:5px 12px; border-radius:999px; background:var(--bg); border:1px solid var(--line);}
+  .dhead .addr{font-weight:600; font-size:23px; letter-spacing:-0.015em; margin-top:7px;}
+  .dhead .ids{color:var(--muted); font-size:13px; margin-top:6px;}
+  .dhead .ids .sep{color:var(--line); margin:0 4px;}
+  .dbadges{display:flex; align-items:center; gap:7px; flex-wrap:wrap;}
+  .dbadge{font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; padding:3px 9px; border-radius:6px; background:var(--blue-bg); color:var(--blue-dark);}
+  .dbadge.alt{background:var(--bg2); color:var(--muted); border:1px solid var(--line);}
+  .dstack{display:grid; gap:16px; align-content:start;}
+  .kinfo{padding:11px 18px; border-top:1px solid var(--line);}
+  .kcard-t + .kinfo{border-top:none;}
+  .kinfo .kk{font-size:12px; color:var(--faint);}
+  .kinfo .kv{font-size:14.5px; font-weight:500; margin-top:2px;}
   .dgrid{display:grid; grid-template-columns:1fr 430px; gap:20px; align-items:start;}
   .dcol{display:grid; gap:16px; min-width:0;}
   .boxes{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;}
@@ -803,9 +810,7 @@
     if(av && av.id!=="view-detail") detailReturn=av.id.replace("view-","");
     var d=byId(id);
     if(!d){ toast("Ejendommen kunne ikke findes"); return; }
-    var vVur=d.vur!=null?kr(d.vur):"–", vTax=d.tax!=null?kr(d.tax):"–",
-        vHandel=d.saleYear?(d.saleYear+" · "+kr(d.lastSalePrice)):"– (kræver Tinglysning)",
-        vEnergy=d.energy?energyHtml(d.energy):"–", vZone=d.zone||"–", vYear=d.year||"–";
+    var vHandel=d.saleYear?(d.saleYear+" · "+kr(d.lastSalePrice)):"– (kræver Tinglysning)";
     // De kilder vi endnu ikke har adgang til, samlet i én linje i stedet for tomme felter
     var mangler=[];
     if(d.vur==null) mangler.push("Ejendomsværdi");
@@ -815,36 +820,61 @@
     if(!d.energy) mangler.push("Energimærke");
     if(!d.zone) mangler.push("Zone");
     if(!d.year) mangler.push("Opførelsesår");
-    // Chips under adressen: kommune, matrikel, anvendelse — som på Resights
+    // Identitetslinjen under adressen: matrikel · kommune · BFE
     var byg0=(d.bygninger||[])[0]||{};
     var anvendelse=byg0.anvendelse||d.type||"";
-    var chips="";
-    if(d.kommune) chips+='<span class="dchip">⚲ '+d.kommune+' Kommune</span>';
-    if(d.matrikel) chips+='<span class="dchip">▦ '+d.matrikel.ejerlavNavn+', '+d.matrikel.matrikelnr+'</span>';
-    if(anvendelse) chips+='<span class="dchip">▤ '+anvendelse+(d.year?' ('+d.year+')':'')+'</span>';
+    var idDele=[];
+    if(d.matrikel) idDele.push("Matr.nr. "+d.matrikel.matrikelnr+" "+d.matrikel.ejerlavNavn);
+    // "Københavns Kommune", men "Vordingborg Kommune" — kun hovedstaden bøjes
+    if(d.kommune) idDele.push(d.kommune==="København" ? "Københavns Kommune" : d.kommune+" Kommune");
+    if(d.bfe) idDele.push("BFE-nr: "+d.bfe);
 
     var ejl=d.ejl, enh=d.enheder||null;
     if(!enh) mangler.push("Enhedsfordeling (BBR)");
 
-    // Kasse 1 — enheden/ejendommen, samme rækkefølge som Resights
-    var noegle=
-      (ejl? kfelt(ejl.værelser, "Værelser")+
-            kfelt(ejl.tinglystArealM2!=null? ejl.tinglystArealM2+" m²":null, "Tinglyst areal")
-          : kfelt(d.rooms, "Værelser")+
-            kfelt(d.grundareal!=null? d.grundareal+" m²":null, "Grundareal"))+
-      kfelt(enh&&enh.boligArealM2!=null? enh.boligArealM2+" m²"
-            : (ejl&&ejl.enhedArealM2!=null? ejl.enhedArealM2+" m²"
-            : (d.area? d.area+" m²":null)), "Beboelsesareal")+
-      kfelt(enh&&enh.erhvervArealM2!=null? enh.erhvervArealM2+" m²":null, "Erhvervsareal")+
-      kfelt(enh&&enh.bolig!=null? enh.bolig : d.units, "Beboelsesenheder")+
-      kfelt(enh&&enh.erhverv!=null? enh.erhverv : null, "Erhvervsenheder");
+    /* ---- Arealer: matrikel, bygninger, enheder ---- */
+    function sumByg(felt){
+      var v=(d.bygninger||[]).map(function(b){return b[felt];}).filter(function(x){return x!=null;});
+      return v.length? v.reduce(function(a,b){return a+b;},0) : null;
+    }
+    var bygAreal=sumByg("samletBygningsarealM2"), kaelder=sumByg("kælderM2"), tagetage=sumByg("tagetageM2");
+    // Bebyggelsesprocent = etageareal over terræn i forhold til grundarealet.
+    // Beregnet her, ikke hentet — står ikke som selvstændigt felt i registrene.
+    var overTerraen = bygAreal!=null? bygAreal+(tagetage||0) : null;
+    var bebygPct = (overTerraen!=null && d.grundareal) ? Math.round(overTerraen/d.grundareal*100) : null;
 
-    // Kasse 1, sidste sektion — ejendommens øvrige stamdata
-    var stam=
-      kfelt(d.energy?energyHtml(d.energy):null, "Energimærke")+
-      kfelt(d.zone, "Zone")+
-      (!ejl && (d.bygninger||[]).length?
-        kfelt(d.bygninger.map(function(b){return b.anvendelse+(b.opført?" ("+b.opført+")":"");}).join(" · "), "Bygninger") : "");
+    var aMatrikel=
+      kfelt(d.grundareal!=null? nf.format(d.grundareal)+" m²":null, "Grundareal")+
+      kfelt(bebygPct!=null? bebygPct+" %":null, "Bebyggelsesprocent (beregnet)");
+
+    var aBygninger=
+      kfelt(bygAreal!=null? nf.format(bygAreal)+" m²":null, "Bygningsareal")+
+      kfelt(overTerraen!=null? nf.format(overTerraen)+" m²":null, "Totalareal over terræn")+
+      kfelt(kaelder!=null? nf.format(kaelder)+" m²":null, "Kælder")+
+      kfelt(tagetage!=null? nf.format(tagetage)+" m²":null, "Tagetage");
+
+    var boligAreal = enh&&enh.boligArealM2!=null? enh.boligArealM2
+                   : (ejl&&ejl.enhedArealM2!=null? ejl.enhedArealM2 : (d.area||null));
+    var aEnheder=
+      kfelt(enh&&enh.bolig!=null? enh.bolig : d.units, "Beboelsesenheder")+
+      kfelt(enh&&enh.erhverv!=null? enh.erhverv : null, "Erhvervsenheder")+
+      kfelt(boligAreal!=null? nf.format(boligAreal)+" m²":null, "Beboelsesareal")+
+      kfelt(enh&&enh.erhvervArealM2!=null? nf.format(enh.erhvervArealM2)+" m²":null, "Erhvervsareal")+
+      (ejl? kfelt(ejl.tinglystArealM2!=null? ejl.tinglystArealM2+" m²":null, "Tinglyst areal")+
+            kfelt(ejl.værelser, "Værelser") : "");
+
+    var antalByg=(d.bygninger||[]).length;
+    var antalEnh=(enh&&enh.bolig!=null? enh.bolig+(enh.erhverv||0) : d.units)||null;
+
+    // Ejendommen-kortet
+    var ejendomLinjer=
+      kinfo("Beliggende", d.addr+(d.city? ", "+d.city : "")+(ejl? " (ejerlejlighed)" : (d.ejerforening? " (opdelt i ejerlejligheder)":"")))+
+      kinfo("BFE-nr", d.bfe)+
+      kinfo("Ejerforhold", d.ownerType)+
+      kinfo("Ejer", ejerNavnEllerNull(d))+
+      kinfo("Anvendelse", anvendelse+(d.year?" ("+d.year+")":""))+
+      kinfo("Energimærke", d.energy?energyHtml(d.energy):null)+
+      kinfo("Zone", d.zone);
 
     // Kasse 2 — ejerskab og økonomi. Kvadratmeterprisen regnes ud af handelspris
     // og areal; den står ikke i registrene som selvstændigt tal.
@@ -861,14 +891,21 @@
       kfelt(d.tax!=null? kr(d.tax):null, "Grundskyld / år");
     // Ejernavn og handelshistorik er kildeafhængige. Manglende data hører hjemme
     // som en dæmpet note — ikke som et stort tal der ligner en værdi.
-    var ejerNavn = (d.ownerName && d.ownerName.charAt(0)!=="–") ? d.ownerName : null;
 
     $("detail-body").innerHTML =
       '<div class="dhead">'+
         '<div>'+
-          '<div class="addr">⚲ '+d.addr+(d.city? ', '+d.city : '')+(d.real?'<span class="real-badge">✓ registerdata</span>':'')+'</div>'+
-          (d.bfe? '<div class="ids">BFE: '+d.bfe+'</div>' : '')+
-          (chips? '<div class="dchips">'+chips+'</div>' : '')+
+          '<div class="dbadges">'+
+            (function(){
+              var primaer = ejl? 'Ejerlejlighed' : 'Ejendom';
+              var sekundaer = (d.type && d.type!==primaer && d.type!=="Ejendom") ? d.type : null;
+              return '<span class="dbadge">'+primaer+'</span>'+
+                (sekundaer? '<span class="dbadge alt">'+sekundaer+'</span>' : '');
+            })()+
+            (d.real?'<span class="real-badge">✓ registerdata</span>':'')+
+          '</div>'+
+          '<div class="addr">'+d.addr+(d.city? ', '+d.city : '')+'</div>'+
+          (idDele.length? '<div class="ids">'+idDele.join(' <span class="sep">|</span> ')+'</div>' : '')+
         '</div>'+
         '<div class="detail-acts">'+
           (d.real&&ejl&&ejl.parentAdresse?
@@ -880,23 +917,25 @@
         '<div class="dcol">'+
           '<div class="boxes">'+
           '<div class="kcard">'+
-            '<div class="kcard-t">'+
-              '<span class="kicon">▦</span>'+
-              (ejl? 'Ejerlejlighed'+(ejl.nummer!=null? ' nr. '+ejl.nummer:'') : 'Ejendom')+
-              (ejl&&ejl.fordelingstal? '<span class="fine">('+ejl.fordelingstal+')</span>' : '')+
+            '<div class="kcard-t"><span class="kicon">▦</span>Arealer'+
               (d.real&&ejl&&ejl.parentAdresse? '<button class="lnk" id="moder-btn" data-adr="'+ejl.parentAdresse+'">Gå til hovedejendommen →</button>' : '')+
             '</div>'+
-            kblok(noegle)+kblok(stam)+
+            kblok(aMatrikel, "1 matrikel")+
+            kblok(aBygninger, antalByg+(antalByg===1?" bygning":" bygninger"))+
+            kblok(aEnheder, (antalEnh? antalEnh+(antalEnh===1?" enhed":" enheder") : "Enheder")+
+              (ejl&&ejl.fordelingstal? " · fordelingstal "+ejl.fordelingstal : ""))+
           '</div>'+
-          '<div class="kcard">'+
-            '<div class="kcard-t">'+
-              '<span class="kicon">☖</span>'+
-              (ejerNavn || 'Ejerforhold')+
-              (d.ownerType? '<span class="fine">'+d.ownerType+(d.ownerAge?', '+d.ownerAge+' år':'')+'</span>' : '')+
+          '<div class="dstack">'+
+            '<div class="kcard">'+
+              '<div class="kcard-t"><span class="kicon">☖</span>Ejendommen</div>'+
+              (ejendomLinjer || knote('Ingen stamdata tilgængelige'))+
+              (ejerNavnEllerNull(d)? '' : knote('Ejernavn kræver EJF-certifikat'))+
             '</div>'+
-            (ejerNavn? '' : knote('Ejernavn kræver EJF-certifikat'))+
-            (handel? kblok(handel,"Seneste handel") : knote('Handelshistorik kræver adgang til Tinglysning'))+
-            (vurdering? kblok(vurdering,"Vurdering") : knote('Vurdering og grundskyld kræver adgang til VUR'))+
+            '<div class="kcard">'+
+              '<div class="kcard-t"><span class="kicon">kr</span>Økonomi</div>'+
+              (handel? kblok(handel,"Seneste handel") : knote('Handelshistorik kræver adgang til Tinglysning'))+
+              (vurdering? kblok(vurdering,"Vurdering") : knote('Vurdering og grundskyld kræver adgang til VUR'))+
+            '</div>'+
           '</div>'+
           '</div>'+
           (mangler.length? '<div class="mangler" style="margin:0; border:none; padding:0;"><b>Ikke koblet på endnu:</b> '+mangler.join(" · ")+'</div>' : '')+
@@ -925,6 +964,29 @@
   // Værdier som "– (kræver Tinglysning)" beholdes, for de forklarer hvorfor.
   /* ---- Kort på ejendomssiden — samme lag som forsiden, matriklen fremhævet ---- */
   var dMap=null, dNaboLag=null, dEgenLag=null, dNaboGeo=null, dFarve="#e5007d";
+  var dSidst=null, dPopupAaben=false, dTimer=null, dReq=null;
+  var DETAIL_MIN_ZOOM = 15;
+
+  function planlaegNaboer(){ clearTimeout(dTimer); dTimer=setTimeout(hentNaboer, 350); }
+
+  function hentNaboer(){
+    if(!dMap || !dNaboLag) return;
+    // En åben popup må ikke rives væk under brugeren — laget gentegnes bagefter
+    if(dPopupAaben) return;
+    var c=dMap.getCenter(), z=dMap.getZoom();
+    if(z < DETAIL_MIN_ZOOM){ dNaboLag.clearLayers(); dNaboGeo=null; dSidst=null; return; }
+    var radius=Math.min(Math.round(c.distanceTo(dMap.getBounds().getNorthEast())), 1200);
+    // små flytninger, fx auto-pan når en popup åbnes, skal ikke hente forfra
+    if(dSidst && dSidst.zoom===z && c.distanceTo(L.latLng(dSidst.lat,dSidst.lng)) < radius*0.35) return;
+    dSidst={lat:c.lat, lng:c.lng, zoom:z, radius:radius};
+    if(dReq) dReq.abort();
+    dReq=new AbortController();
+    fetch('https://api.dataforsyningen.dk/jordstykker?format=geojson&srid=4326&cirkel='+
+          c.lng.toFixed(6)+','+c.lat.toFixed(6)+','+radius, {signal:dReq.signal})
+      .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(gj){ dNaboGeo=gj; tegnNaboMatrikler(); })
+      .catch(function(err){ if(err.name!=="AbortError") dSidst=null; });
+  }
 
   function tegnNaboMatrikler(){
     if(!dNaboLag || !dNaboGeo) return;
@@ -938,7 +1000,8 @@
       onEachFeature:function(f,l){
         var p=f.properties||{};
         l.bindPopup(matrikelPopup(p), {minWidth:170, maxWidth:230});
-        l.on('popupopen', function(){ enrichJordstykke(l, p); });
+        l.on('popupopen', function(){ dPopupAaben=true; enrichJordstykke(l, p); });
+        l.on('popupclose', function(){ dPopupAaben=false; planlaegNaboer(); });
         l.on('mouseover', function(){ l.setStyle({weight:2.5, fillOpacity:.18}); });
         l.on('mouseout',  function(){ l.setStyle(grund); });
       }
@@ -967,11 +1030,10 @@
     });
     setTimeout(function(){ if(dMap) dMap.invalidateSize(); }, 60);
 
-    dNaboGeo=null;
-    fetch('https://api.dataforsyningen.dk/jordstykker?format=geojson&srid=4326&cirkel='+d.lng.toFixed(6)+','+d.lat.toFixed(6)+',250')
-      .then(function(r){ return r.ok? r.json() : null; })
-      .then(function(gj){ if(gj){ dNaboGeo=gj; tegnNaboMatrikler(); } })
-      .catch(function(){});
+    // Naboerne følger kortet, så de også dukker op når man panorerer væk
+    dNaboGeo=null; dSidst=null; dPopupAaben=false;
+    dMap.on('moveend', planlaegNaboer);
+    planlaegNaboer();
 
     if(d.matrikel && d.matrikel.ejerlavKode && d.matrikel.matrikelnr){
       fetch('https://api.dataforsyningen.dk/jordstykker?format=geojson&srid=4326&ejerlavkode='+
@@ -1000,6 +1062,10 @@
     return '<div class="kgrid">'+(gruppe? '<div class="kglabel">'+gruppe+'</div>' : '')+felter+'</div>';
   }
   function knote(t){ return '<div class="knote">'+t+'</div>'; }
+  // Etiket over værdi — til stamdata hvor tallet ikke er hovedsagen
+  function kinfo(k,v){ return tom(v)? "" : '<div class="kinfo"><div class="kk">'+k+'</div><div class="kv">'+v+'</div></div>'; }
+  // Pladsholdere som "– (kræver EJF-certifikat)" er ikke et ejernavn
+  function ejerNavnEllerNull(d){ return (d.ownerName && d.ownerName.charAt(0)!=="–") ? d.ownerName : null; }
 
   /* ---- Alle enheder på hovedejendommen ----
      Adresserne hentes fra DAWA på ejerlav + matrikelnr. Det virker både når man
