@@ -668,7 +668,7 @@
   }
 
   /* ---- AI assistant (natural language -> filters, hosted open model, OpenAI-compatible) ---- */
-  var PROXY_URL = ""; // TEMP STUB
+  var PROXY_URL = "https://purple-tree-3fd5.kiakafaei.workers.dev"; // Cloudflare Worker proxy (server-side Groq key)
   var OAI_BASE_DEFAULT = "https://api.groq.com/openai/v1";
   var OAI_MODEL_DEFAULT = "llama-3.1-8b-instant";
   function oaiBase(){ try{ return localStorage.getItem('afkast_oai_base')||OAI_BASE_DEFAULT; }catch(e){ return OAI_BASE_DEFAULT; } }
