@@ -942,7 +942,7 @@
 
     // Beholderen bygges på ny hver gang siden tegnes, så det gamle kort skal rives ned først
     if(dMap){ dMap.remove(); dMap=null; }
-    dMap=L.map('detail-map', {scrollWheelZoom:false}).setView([d.lat,d.lng], 18);
+    dMap=L.map('detail-map', {scrollWheelZoom:true}).setView([d.lat,d.lng], 18);
     dMap.createPane('dnabo'); dMap.getPane('dnabo').style.zIndex=350;
     dMap.createPane('degen'); dMap.getPane('degen').style.zIndex=360;
 
