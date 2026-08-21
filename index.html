@@ -930,8 +930,20 @@
   function tegnNaboMatrikler(){
     if(!dNaboLag || !dNaboGeo) return;
     dNaboLag.clearLayers();
-    L.geoJSON(dNaboGeo, {pane:'dnabo',
-      style:{color:dFarve, weight:1, opacity:.8, fillColor:dFarve, fillOpacity:.04}}).addTo(dNaboLag);
+    var grund={color:dFarve, weight:1, opacity:.8, fillColor:dFarve, fillOpacity:.04};
+    L.geoJSON(dNaboGeo, {
+      pane:'dnabo',
+      style:grund,
+      // Naboejendomme er klikbare på samme måde som på forsiden, så man kan
+      // undersøge omkringliggende ejendomme uden at gå tilbage til kortet.
+      onEachFeature:function(f,l){
+        var p=f.properties||{};
+        l.bindPopup(matrikelPopup(p), {minWidth:230});
+        l.on('popupopen', function(){ enrichJordstykke(l, p); });
+        l.on('mouseover', function(){ l.setStyle({weight:2.5, fillOpacity:.18}); });
+        l.on('mouseout',  function(){ l.setStyle(grund); });
+      }
+    }).addTo(dNaboLag);
   }
 
   function initDetailMap(d){
@@ -973,7 +985,7 @@
           dMap.invalidateSize(); // sikrer rigtige mål, så zoomniveauet bliver korrekt
           dMap.fitBounds(lag.getBounds(), {padding:[28,28], maxZoom:19});
         }).catch(function(){});
-      dNote("Matriklen er markeret med rødt · skift mellem skærmkort og ortofoto øverst til højre");
+      dNote("Ejendommen er markeret med rødt · klik en naboejendom for at slå den op");
     } else {
       L.circleMarker([d.lat,d.lng], {pane:'degen', radius:9, fillColor:"#dc2626", color:"#fff", weight:2, fillOpacity:.95}).addTo(dEgenLag);
       dNote("Placering markeret med rødt · matrikel vises når ejendommen slås op i registrene");
