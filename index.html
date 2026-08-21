@@ -895,12 +895,9 @@
       '<div class="dhead">'+
         '<div>'+
           '<div class="dbadges">'+
-            (function(){
-              var primaer = ejl? 'Ejerlejlighed' : 'Ejendom';
-              var sekundaer = (d.type && d.type!==primaer && d.type!=="Ejendom") ? d.type : null;
-              return '<span class="dbadge">'+primaer+'</span>'+
-                (sekundaer? '<span class="dbadge alt">'+sekundaer+'</span>' : '');
-            })()+
+            // Boligkategori frem for "Ejendom". Samme mapping som kort-popup'en
+            // bruger, så et jordstykke og dets ejendomsside siger det samme.
+            '<span class="dbadge">'+(ejl? 'Ejerlejlighed' : (bygningstype(d) || d.type || 'Ejendom'))+'</span>'+
             (d.real?'<span class="real-badge">✓ registerdata</span>':'')+
           '</div>'+
           '<div class="addr">'+d.addr+(d.city? ', '+d.city : '')+'</div>'+
