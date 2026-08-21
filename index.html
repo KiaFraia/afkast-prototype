@@ -145,6 +145,11 @@
   .dbadges{display:flex; align-items:center; gap:7px; flex-wrap:wrap;}
   .dbadge{font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; padding:3px 9px; border-radius:6px; background:var(--blue-bg); color:var(--blue-dark);}
   .dbadge.alt{background:var(--bg2); color:var(--muted); border:1px solid var(--line);}
+  .dtop{display:flex; align-items:center; gap:18px; margin-bottom:16px;}
+  .dtop .back{margin-bottom:0; flex-shrink:0;}
+  .dsearch{flex:1; max-width:430px;}
+  .dsearch input{font-size:14px; padding:9px 13px;}
+  .dsearch .lk-sugg{top:42px;}
   .dstack{display:grid; gap:16px; align-content:start;}
   .kinfo{padding:11px 18px; border-top:1px solid var(--line);}
   .kcard-t + .kinfo{border-top:none;}
@@ -300,7 +305,13 @@
   </section>
 
   <section class="view" id="view-detail">
-    <button class="back" onclick="backFromDetail()">‹ Tilbage</button>
+    <div class="dtop">
+      <button class="back" onclick="backFromDetail()">‹ Tilbage</button>
+      <div class="lk-wrap dsearch">
+        <input id="dlk-input" type="text" autocomplete="off" placeholder="Søg en anden adresse">
+        <div id="dlk-sugg" class="lk-sugg"></div>
+      </div>
+    </div>
     <div id="detail-body"></div>
   </section>
 
@@ -1232,9 +1243,10 @@
       enheder:p.enheder||null, enhedsliste:p.enhedsliste||null,
       ejl:ejl, ejerforening:p.ejerforening||null };
   }
-  var lkTimer=null;
-  function lookupInit(){
-    var inp=$("lk-input"), box=$("lk-sugg");
+  // Bruges både på forsiden og på ejendomssiden, så der kun findes én
+  // implementering af adressesøgningen.
+  function lookupInit(inpId, boxId){
+    var inp=$(inpId), box=$(boxId), lkTimer=null;
     if(!inp) return;
     inp.addEventListener("input", function(){
       clearTimeout(lkTimer);
@@ -1288,7 +1300,10 @@
   }
 
   document.querySelectorAll(".segbtn button").forEach(function(b){ b.addEventListener("click", function(){ pipeView=b.getAttribute("data-pv"); document.querySelectorAll(".segbtn button").forEach(function(x){x.classList.toggle("active", x===b);}); renderPipeline(); }); });
-  initMap(); initFilters(); initAssistant(); lookupInit(); renderDash(); savePipe();
+  initMap(); initFilters(); initAssistant();
+  lookupInit("lk-input","lk-sugg");
+  lookupInit("dlk-input","dlk-sugg");
+  renderDash(); savePipe();
 
   // Deep link: ?adresse=… åbner ejendommens overblik direkte (bruges af "Se ejendom")
   try {
