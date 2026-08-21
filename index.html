@@ -88,7 +88,6 @@
   .etab-r{cursor:pointer;}
   .etab-r:hover td{background:#fff; color:var(--blue);}
   .etab-r.her td{background:var(--blue-bg); color:var(--blue-dark); font-weight:600; cursor:default;}
-  .real-badge{display:inline-block; font-size:11px; font-weight:600; background:var(--green-bg); color:var(--green); padding:2px 8px; border-radius:6px; margin-left:8px;}
   .asst-gear{border:none; background:none; cursor:pointer; font-size:17px; color:var(--muted);}
   .asst-form{display:flex; gap:8px;}
   .asst-form input{flex:1; font:inherit; font-size:15px; padding:11px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2); outline:none;}
@@ -909,7 +908,6 @@
             // Boligkategori frem for "Ejendom". Samme mapping som kort-popup'en
             // bruger, så et jordstykke og dets ejendomsside siger det samme.
             '<span class="dbadge">'+(ejl? 'Ejerlejlighed' : (bygningstype(d) || d.type || 'Ejendom'))+'</span>'+
-            (d.real?'<span class="real-badge">✓ registerdata</span>':'')+
           '</div>'+
           '<div class="addr">'+d.addr+(d.city? ', '+d.city : '')+'</div>'+
           (idDele.length? '<div class="ids">'+idDele.join(' <span class="sep">|</span> ')+'</div>' : '')+
