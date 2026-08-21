@@ -76,6 +76,17 @@
   .ef-item{padding:8px 12px; font-size:13px; cursor:pointer; border-bottom:1px solid var(--line);}
   .ef-item:last-child{border-bottom:none;}
   .ef-item:hover{background:#fff; color:var(--blue);}
+  .ef-item.her{background:var(--blue-bg); color:var(--blue-dark); font-weight:600; cursor:default;}
+  .ef-her{font-weight:400; font-size:11.5px; color:var(--blue); margin-left:6px;}
+  .etab{width:100%; border-collapse:collapse; font-size:13px;}
+  .etab th{position:sticky; top:0; background:var(--bg2); text-align:left; font-weight:600; color:var(--muted); font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; padding:8px 12px; border-bottom:1px solid var(--line); white-space:nowrap;}
+  .etab td{padding:8px 12px; border-bottom:1px solid var(--line); white-space:nowrap;}
+  .etab tr:last-child td{border-bottom:none;}
+  .etab .num{text-align:right;}
+  .etab .dim{color:var(--faint);}
+  .etab-r{cursor:pointer;}
+  .etab-r:hover td{background:#fff; color:var(--blue);}
+  .etab-r.her td{background:var(--blue-bg); color:var(--blue-dark); font-weight:600; cursor:default;}
   .real-badge{display:inline-block; font-size:11px; font-weight:600; background:var(--green-bg); color:var(--green); padding:2px 8px; border-radius:6px; margin-left:8px;}
   .asst-gear{border:none; background:none; cursor:pointer; font-size:17px; color:var(--muted);}
   .asst-form{display:flex; gap:8px;}
@@ -91,6 +102,10 @@
   .asst-forslag-t{font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:9px;}
   .asst-actions{display:flex; align-items:center; gap:10px; margin-top:12px;}
   .asst-src{font-size:11.5px; color:var(--faint); margin-left:auto;}
+  .pop-dim{color:var(--faint);}
+  .pop-btn{margin-top:10px; width:100%; font:inherit; font-size:13px; font-weight:500; cursor:pointer; border-radius:8px; padding:7px 12px; border:1px solid var(--blue); background:var(--blue); color:#fff;}
+  .pop-btn:hover{background:var(--blue-dark); border-color:var(--blue-dark);}
+  .pop-body{margin-top:8px; padding-top:8px; border-top:1px solid var(--line);}
   .legend{display:flex; gap:16px; font-size:12.5px; color:var(--muted); margin:10px 2px 0;}
   .legend span{display:inline-flex; align-items:center; gap:6px;}
   .dot{width:10px; height:10px; border-radius:50%; display:inline-block;}
@@ -109,26 +124,44 @@
   .chip{font-size:12px; padding:2px 9px; border-radius:999px; background:var(--bg2); color:var(--muted); border:1px solid var(--line);}
   .chip.hot{background:var(--red-bg); color:var(--red); border-color:transparent;}
   .deal .acts{display:flex; flex-direction:column; gap:6px; flex-shrink:0;}
-  /* detail (business case) */
+  /* detail (ejendomsoverblik) */
   .back{background:none; border:none; color:var(--blue); cursor:pointer; font-weight:500; padding:0; margin-bottom:14px; display:inline-flex; gap:6px; align-items:center;}
-  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
-  .facts{padding:20px;}
-  .facts .addr{display:flex; align-items:center; gap:8px; font-weight:600; font-size:17px; margin-bottom:4px;}
-  .facts .sub{color:var(--muted); font-size:14px; margin-bottom:16px;}
-  .fgrid{display:grid; grid-template-columns:1fr 1fr; gap:14px 16px;}
+  .facts{padding:22px 24px;}
+  .facts .head{display:flex; align-items:flex-start; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:20px; padding-bottom:18px; border-bottom:1px solid var(--line);}
+  .facts .addr{display:flex; align-items:center; gap:8px; font-weight:600; font-size:20px; letter-spacing:-0.01em;}
+  .facts .sub{color:var(--muted); font-size:14px; margin-top:3px;}
+  .detail-acts{display:flex; gap:8px; flex-shrink:0;}
+  .fgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:18px 22px;}
   .fgrid .k{font-size:12px; color:var(--faint);}
   .fgrid .v{font-size:15px; font-weight:500;}
-  .calc{padding:20px;}
-  .slider+.slider{margin-top:15px;}
-  .slider .top{display:flex; justify-content:space-between; font-size:13.5px; margin-bottom:4px;}
-  .slider .top .lbl{color:var(--muted);}
-  .slider .top .out{font-weight:600;}
-  .results{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:20px;}
-  .metric{background:var(--bg2); border-radius:var(--radius-sm); padding:14px;}
-  .metric .k{font-size:12.5px; color:var(--muted);}
-  .metric .v{font-size:23px; font-weight:600; margin-top:4px;}
-  .subline{display:flex; flex-wrap:wrap; gap:6px 22px; font-size:13px; color:var(--muted); margin-top:16px; padding-top:14px; border-top:1px solid var(--line);}
-  .subline b{color:var(--ink);}
+  .mangler{margin-top:22px; padding-top:16px; border-top:1px solid var(--line); font-size:12.5px; color:var(--faint);}
+  .mangler b{font-weight:600;}
+  /* ejendomsside: kort til højre, datakort til venstre */
+  .dhead{display:flex; align-items:flex-start; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:18px;}
+  .dhead .addr{display:flex; align-items:center; gap:9px; font-weight:600; font-size:21px; letter-spacing:-0.01em;}
+  .dhead .ids{color:var(--muted); font-size:13px; margin-top:4px;}
+  .dchips{display:flex; flex-wrap:wrap; gap:8px; margin-top:13px;}
+  .dchip{display:inline-flex; align-items:center; gap:6px; font-size:13px; padding:5px 12px; border-radius:999px; background:var(--bg); border:1px solid var(--line);}
+  .dgrid{display:grid; grid-template-columns:1fr 430px; gap:20px; align-items:start;}
+  .dcol{display:grid; gap:16px; min-width:0;}
+  .boxes{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;}
+  @media(max-width:1180px){ .boxes{grid-template-columns:1fr;} }
+  .kcard{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); box-shadow:0 1px 3px rgba(15,23,42,.04); overflow:hidden;}
+  .kcard-t{display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; padding:14px 18px; border-bottom:1px solid var(--line); font-weight:600; font-size:15px;}
+  .kcard-t .fine{font-weight:400; color:var(--muted); font-size:13px;}
+  .kcard-t .lnk{margin-left:auto; font-weight:500; font-size:13.5px; color:var(--blue); background:none; border:none; cursor:pointer; padding:0;}
+  .kcard-t .lnk:hover{text-decoration:underline;}
+  .kcard-t .kicon{display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:7px; background:var(--blue-bg); color:var(--blue-dark); font-size:13px;}
+  .kgrid{display:grid; grid-template-columns:1fr 1fr; gap:18px 22px; padding:16px 18px;}
+  .kgrid + .kgrid{border-top:1px solid var(--line);}
+  .kgrid .v{font-size:20px; font-weight:600; line-height:1.2;}
+  .kgrid .k{font-size:12.5px; color:var(--muted); margin-top:3px;}
+  .kglabel{grid-column:1/-1; font-size:12.5px; color:var(--muted); margin-bottom:-10px;}
+  .knote{padding:13px 18px; border-top:1px solid var(--line); font-size:12.5px; color:var(--faint);}
+  .kcard-t + .knote{border-top:none;}
+  .dmap{height:330px; z-index:1;}
+  .dmap-note{padding:10px 16px; font-size:12.5px; color:var(--faint); border-top:1px solid var(--line);}
+  @media(max-width:980px){ .dgrid{grid-template-columns:1fr;} }
   /* pipeline */
   .board{display:grid; grid-template-columns:repeat(6,1fr); gap:12px;}
   .col{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:10px; min-height:120px;}
@@ -172,7 +205,7 @@
   .toast.show{opacity:1;}
   @media(max-width:900px){
     .finder{grid-template-columns:1fr;} .fpanel{position:static;}
-    .grid2{grid-template-columns:1fr;} .board{grid-template-columns:1fr 1fr;} .dash{grid-template-columns:1fr 1fr;}
+    .board{grid-template-columns:1fr 1fr;} .dash{grid-template-columns:1fr 1fr;}
     .deal{flex-wrap:wrap;} .tabs{display:none;}
   }
 </style>
@@ -251,6 +284,7 @@
 
       <div class="fmain">
         <div id="map" class="map"></div>
+        <p class="legend" id="matrikel-hint" style="margin:9px 2px 0;"></p>
         <p class="count" id="deal-count"></p>
         <div class="deal-list" id="deal-list"></div>
       </div>
@@ -286,38 +320,37 @@
 (function(){
   var YEAR = 2026;
   var DATA = [
-    {id:1, addr:"Nørrebrogade 155, 2. tv", city:"København", region:"Hovedstaden", lat:55.6971, lng:12.5522, type:"Ejerlejlighed", area:68, rooms:2, units:1, year:1903, energy:"D", vur:2800000, tax:4200, saleYear:2003, lastSalePrice:1200000, zone:"Boligområde", price:3295000, rent:11500, cost:42000, ownerName:"Lis Frølich Hansen", ownerType:"Privatperson", ownerAge:78, ownerLivesHere:false, ownerPropCount:4},
-    {id:2, addr:"Vesterbrogade 89, 4. th", city:"København", region:"Hovedstaden", lat:55.6690, lng:12.5460, type:"Ejerlejlighed", area:54, rooms:2, units:1, year:1899, energy:"E", vur:2350000, tax:3600, saleYear:2021, lastSalePrice:2795000, zone:"Bymidte", price:2895000, rent:9800, cost:36000, ownerName:"Martin Bech", ownerType:"Privatperson", ownerAge:41, ownerLivesHere:true, ownerPropCount:1},
-    {id:3, addr:"Silkeborgvej 230", city:"Aarhus", region:"Midtjylland", lat:56.1520, lng:10.1760, type:"Enfamiliehus", area:142, rooms:5, units:1, year:1968, energy:"C", vur:3400000, tax:11800, saleYear:2008, lastSalePrice:1900000, zone:"Åben-lav bolig", price:4150000, rent:15500, cost:58000, ownerName:"Jørgen Dahl", ownerType:"Privatperson", ownerAge:72, ownerLivesHere:true, ownerPropCount:1},
-    {id:4, addr:"Thorsgade 12, 1. tv", city:"Odense", region:"Syddanmark", lat:55.3980, lng:10.3880, type:"Ejerlejlighed", area:78, rooms:3, units:1, year:1932, energy:"D", vur:1450000, tax:5100, saleYear:2020, lastSalePrice:1690000, zone:"Boligområde", price:1995000, rent:8900, cost:31000, ownerName:"Fyn Bolig ApS", ownerType:"Selskab", ownerAge:null, ownerLivesHere:false, ownerPropCount:6},
-    {id:5, addr:"Danmarksgade 60", city:"Aalborg", region:"Nordjylland", lat:57.0450, lng:9.9210, type:"Flerfamiliehus", area:320, rooms:12, units:4, year:1925, energy:"D", vur:2600000, tax:12000, saleYear:2001, lastSalePrice:1600000, zone:"Bymidte", price:3200000, rent:31000, cost:90000, ownerName:"Karen Møller", ownerType:"Privatperson", ownerAge:69, ownerLivesHere:false, ownerPropCount:3},
-    {id:6, addr:"Skolegade 18", city:"Esbjerg", region:"Syddanmark", lat:55.4670, lng:8.4520, type:"Flerfamiliehus", area:180, rooms:8, units:2, year:1955, energy:"E", vur:1600000, tax:7200, saleYear:2005, lastSalePrice:1100000, zone:"Boligområde", price:2250000, rent:16500, cost:62000, ownerName:"Preben Sørensen", ownerType:"Privatperson", ownerAge:83, ownerLivesHere:false, ownerPropCount:5},
-    {id:7, addr:"Jernbanegade 7", city:"Horsens", region:"Midtjylland", lat:55.8610, lng:9.8500, type:"Ejerlejlighed", area:92, rooms:3, units:1, year:1940, energy:"D", vur:1100000, tax:4200, saleYear:2019, lastSalePrice:1260000, zone:"Bymidte", price:1595000, rent:8800, cost:28000, ownerName:"Anne Larsen", ownerType:"Privatperson", ownerAge:55, ownerLivesHere:true, ownerPropCount:2},
-    {id:8, addr:"Søndergade 44", city:"Randers", region:"Midtjylland", lat:56.4610, lng:10.0360, type:"Enfamiliehus", area:130, rooms:4, units:1, year:1972, energy:"C", vur:1500000, tax:6800, saleYear:2015, lastSalePrice:1380000, zone:"Åben-lav bolig", price:1995000, rent:11000, cost:40000, ownerName:"Bent Nielsen", ownerType:"Privatperson", ownerAge:74, ownerLivesHere:true, ownerPropCount:1},
-    {id:9, addr:"Strandvejen 210", city:"Hellerup", region:"Hovedstaden", lat:55.7330, lng:12.5730, type:"Ejerlejlighed", area:96, rooms:3, units:1, year:1932, energy:"C", vur:5200000, tax:14000, saleYear:2020, lastSalePrice:5900000, zone:"Boligområde", price:6450000, rent:18500, cost:60000, ownerName:"Sofie Berg", ownerType:"Privatperson", ownerAge:48, ownerLivesHere:true, ownerPropCount:1},
-    {id:10, addr:"Frederiksgade 9", city:"Vejle", region:"Syddanmark", lat:55.7090, lng:9.5350, type:"Ejerlejlighed", area:70, rooms:2, units:1, year:1928, energy:"D", vur:1200000, tax:4000, saleYear:2004, lastSalePrice:780000, zone:"Bymidte", price:1695000, rent:8200, cost:26000, ownerName:"Inger Kjær", ownerType:"Privatperson", ownerAge:76, ownerLivesHere:false, ownerPropCount:2},
-    {id:11, addr:"Vestergade 25", city:"Svendborg", region:"Syddanmark", lat:55.0600, lng:10.6080, type:"Flerfamiliehus", area:240, rooms:9, units:3, year:1930, energy:"E", vur:1900000, tax:8400, saleYear:2016, lastSalePrice:2050000, zone:"Bymidte", price:2795000, rent:21000, cost:78000, ownerName:"Sydfyn Ejendomme A/S", ownerType:"Selskab", ownerAge:null, ownerLivesHere:false, ownerPropCount:8},
-    {id:12, addr:"Ny Munkegade 5, 3. th", city:"Aarhus", region:"Midtjylland", lat:56.1630, lng:10.2030, type:"Ejerlejlighed", area:60, rooms:2, units:1, year:1910, energy:"D", vur:2100000, tax:5200, saleYear:2009, lastSalePrice:1400000, zone:"Bymidte", price:2595000, rent:10500, cost:32000, ownerName:"Hanne Poulsen", ownerType:"Privatperson", ownerAge:71, ownerLivesHere:false, ownerPropCount:1},
-    {id:13, addr:"Blågårdsgade 12, 2. th", city:"København", region:"Hovedstaden", lat:55.6885, lng:12.5555, type:"Ejerlejlighed", area:62, rooms:2, units:1, year:1905, energy:"D", vur:3100000, tax:4200, saleYear:2002, lastSalePrice:1050000, zone:"Boligområde", price:3600000, rent:12500, cost:40000, ownerName:"Egon Mikkelsen", ownerType:"Privatperson", ownerAge:80, ownerLivesHere:false, ownerPropCount:3},
-    {id:14, addr:"Nordre Frihavnsgade 55, 4. tv", city:"København", region:"Hovedstaden", lat:55.7075, lng:12.5790, type:"Ejerlejlighed", area:84, rooms:3, units:1, year:1908, energy:"C", vur:4600000, tax:6800, saleYear:2019, lastSalePrice:4200000, zone:"Boligområde", price:5100000, rent:16000, cost:46000, ownerName:"Camilla Winther", ownerType:"Privatperson", ownerAge:44, ownerLivesHere:true, ownerPropCount:1},
-    {id:15, addr:"Amagerbrogade 128", city:"København S", region:"Hovedstaden", lat:55.6560, lng:12.6030, type:"Flerfamiliehus", area:260, rooms:8, units:4, year:1932, energy:"D", vur:6200000, tax:15000, saleYear:2004, lastSalePrice:3400000, zone:"Bymidte", price:8900000, rent:52000, cost:140000, ownerName:"Bo Kristensen", ownerType:"Privatperson", ownerAge:73, ownerLivesHere:false, ownerPropCount:6},
-    {id:16, addr:"Godthåbsvej 90, 3. th", city:"Frederiksberg", region:"Hovedstaden", lat:55.6900, lng:12.5250, type:"Ejerlejlighed", area:76, rooms:3, units:1, year:1926, energy:"D", vur:3900000, tax:5200, saleYear:2011, lastSalePrice:2800000, zone:"Boligområde", price:4500000, rent:14000, cost:42000, ownerName:"Frederiksberg Bolig ApS", ownerType:"Selskab", ownerAge:null, ownerLivesHere:false, ownerPropCount:9},
-    {id:17, addr:"Valby Langgade 210", city:"Valby", region:"Hovedstaden", lat:55.6635, lng:12.5120, type:"Enfamiliehus", area:128, rooms:4, units:1, year:1931, energy:"E", vur:4100000, tax:9800, saleYear:2001, lastSalePrice:1900000, zone:"Åben-lav bolig", price:5200000, rent:17500, cost:52000, ownerName:"Grethe Andersen", ownerType:"Privatperson", ownerAge:79, ownerLivesHere:true, ownerPropCount:1},
-    {id:18, addr:"Jægersborg Allé 44", city:"Charlottenlund", region:"Hovedstaden", lat:55.7500, lng:12.5820, type:"Enfamiliehus", area:210, rooms:6, units:1, year:1928, energy:"C", vur:11500000, tax:26000, saleYear:2006, lastSalePrice:6800000, zone:"Åben-lav bolig", price:13900000, rent:32000, cost:90000, ownerName:"Henrik Lund", ownerType:"Privatperson", ownerAge:71, ownerLivesHere:false, ownerPropCount:2},
-    {id:19, addr:"Strandvejen 155, 1. tv", city:"Hellerup", region:"Hovedstaden", lat:55.7320, lng:12.5740, type:"Ejerlejlighed", area:102, rooms:3, units:1, year:1919, energy:"C", vur:6400000, tax:15000, saleYear:2018, lastSalePrice:5800000, zone:"Boligområde", price:7300000, rent:21000, cost:58000, ownerName:"Marie Holm", ownerType:"Privatperson", ownerAge:52, ownerLivesHere:true, ownerPropCount:2},
-    {id:20, addr:"Vanløse Allé 30, 2. th", city:"Vanløse", region:"Hovedstaden", lat:55.6875, lng:12.4890, type:"Ejerlejlighed", area:68, rooms:2, units:1, year:1938, energy:"D", vur:2700000, tax:4000, saleYear:2003, lastSalePrice:990000, zone:"Boligområde", price:3100000, rent:11000, cost:34000, ownerName:"Poul Erik Jensen", ownerType:"Privatperson", ownerAge:82, ownerLivesHere:false, ownerPropCount:4},
-    {id:21, addr:"Gl. Kongevej 120, 4. th", city:"Frederiksberg", region:"Hovedstaden", lat:55.6760, lng:12.5460, type:"Ejerlejlighed", area:58, rooms:2, units:1, year:1901, energy:"E", vur:3000000, tax:4100, saleYear:2021, lastSalePrice:3200000, zone:"Bymidte", price:3400000, rent:12000, cost:36000, ownerName:"Sara Nissen", ownerType:"Privatperson", ownerAge:38, ownerLivesHere:true, ownerPropCount:1},
-    {id:22, addr:"Tagensvej 200", city:"København", region:"Hovedstaden", lat:55.7130, lng:12.5450, type:"Flerfamiliehus", area:300, rooms:9, units:4, year:1929, energy:"D", vur:5400000, tax:13000, saleYear:2007, lastSalePrice:3100000, zone:"Bymidte", price:7600000, rent:46000, cost:128000, ownerName:"Ejendomsselskabet Nord A/S", ownerType:"Selskab", ownerAge:null, ownerLivesHere:false, ownerPropCount:12},
-    {id:23, addr:"Rødovrevej 80", city:"Rødovre", region:"Hovedstaden", lat:55.6810, lng:12.4540, type:"Enfamiliehus", area:140, rooms:5, units:1, year:1962, energy:"D", vur:3600000, tax:8600, saleYear:2013, lastSalePrice:2700000, zone:"Åben-lav bolig", price:4400000, rent:15000, cost:46000, ownerName:"Kurt Pedersen", ownerType:"Privatperson", ownerAge:75, ownerLivesHere:true, ownerPropCount:1},
-    {id:24, addr:"Lyngbyvej 320, 2. tv", city:"Gentofte", region:"Hovedstaden", lat:55.7460, lng:12.5560, type:"Ejerlejlighed", area:88, rooms:3, units:1, year:1936, energy:"C", vur:4800000, tax:9000, saleYear:2005, lastSalePrice:2400000, zone:"Boligområde", price:5600000, rent:17000, cost:50000, ownerName:"Lise Bang", ownerType:"Privatperson", ownerAge:68, ownerLivesHere:false, ownerPropCount:3},
-    {id:25, addr:"Islands Brygge 25, 5. th", city:"København S", region:"Hovedstaden", lat:55.6640, lng:12.5850, type:"Ejerlejlighed", area:95, rooms:3, units:1, year:2006, energy:"B", vur:5500000, tax:7200, saleYear:2020, lastSalePrice:5100000, zone:"Bymidte", price:6000000, rent:18500, cost:52000, ownerName:"Thomas Krogh", ownerType:"Privatperson", ownerAge:41, ownerLivesHere:true, ownerPropCount:2},
-    {id:26, addr:"Frederikssundsvej 190", city:"København", region:"Hovedstaden", lat:55.7070, lng:12.4980, type:"Flerfamiliehus", area:220, rooms:6, units:3, year:1934, energy:"E", vur:4200000, tax:10500, saleYear:2003, lastSalePrice:2200000, zone:"Bymidte", price:6100000, rent:38000, cost:104000, ownerName:"Aage Thomsen", ownerType:"Privatperson", ownerAge:84, ownerLivesHere:false, ownerPropCount:5},
-    {id:27, addr:"Dronningens Tværgade 8, 2. th", city:"København", region:"Hovedstaden", lat:55.6830, lng:12.5860, type:"Ejerlejlighed", area:110, rooms:4, units:1, year:1897, energy:"D", vur:6800000, tax:9500, saleYear:2008, lastSalePrice:4000000, zone:"Bymidte", price:7900000, rent:24000, cost:64000, ownerName:"Vibeke Sørensen", ownerType:"Privatperson", ownerAge:72, ownerLivesHere:false, ownerPropCount:1}
+    {id:1, addr:"Nørrebrogade 155, 2. tv", city:"2200 København N", kommune:"København", region:"Hovedstaden", lat:55.6971, lng:12.5522, type:"Ejerlejlighed", area:68, rooms:2, units:1, year:1903, energy:"D", vur:2800000, grundvaerdi:840000, evskat:11420, tax:4200, saleYear:2003, lastSalePrice:1200000, zone:"Boligområde", price:3295000, rent:11500, cost:42000, ownerName:"Lis Frølich Hansen", ownerType:"Privatperson", ownerAge:78, ownerLivesHere:false, ownerPropCount:4},
+    {id:2, addr:"Vesterbrogade 89, 4. th", city:"1667 København V", kommune:"København", region:"Hovedstaden", lat:55.6690, lng:12.5460, type:"Ejerlejlighed", area:54, rooms:2, units:1, year:1899, energy:"E", vur:2350000, grundvaerdi:700000, evskat:9590, tax:3600, saleYear:2021, lastSalePrice:2795000, zone:"Bymidte", price:2895000, rent:9800, cost:36000, ownerName:"Martin Bech", ownerType:"Privatperson", ownerAge:41, ownerLivesHere:true, ownerPropCount:1},
+    {id:3, addr:"Silkeborgvej 230", city:"8230 Åbyhøj", kommune:"Aarhus", region:"Midtjylland", lat:56.1520, lng:10.1760, type:"Enfamiliehus", area:142, rooms:5, units:1, year:1968, energy:"C", vur:3400000, grundvaerdi:1530000, evskat:13870, tax:11800, saleYear:2008, lastSalePrice:1900000, zone:"Åben-lav bolig", price:4150000, rent:15500, cost:58000, ownerName:"Jørgen Dahl", ownerType:"Privatperson", ownerAge:72, ownerLivesHere:true, ownerPropCount:1},
+    {id:4, addr:"Thorsgade 12, 1. tv", city:"5000 Odense C", kommune:"Odense", region:"Syddanmark", lat:55.3980, lng:10.3880, type:"Ejerlejlighed", area:78, rooms:3, units:1, year:1932, energy:"D", vur:1450000, grundvaerdi:440000, evskat:5920, tax:5100, saleYear:2020, lastSalePrice:1690000, zone:"Boligområde", price:1995000, rent:8900, cost:31000, ownerName:"Fyn Bolig ApS", ownerType:"Selskab", ownerAge:null, ownerLivesHere:false, ownerPropCount:6},
+    {id:5, addr:"Danmarksgade 60", city:"9000 Aalborg", kommune:"Aalborg", region:"Nordjylland", lat:57.0450, lng:9.9210, type:"Flerfamiliehus", area:320, rooms:12, units:4, year:1925, energy:"D", vur:2600000, grundvaerdi:910000, evskat:10610, tax:12000, saleYear:2001, lastSalePrice:1600000, zone:"Bymidte", price:3200000, rent:31000, cost:90000, ownerName:"Karen Møller", ownerType:"Privatperson", ownerAge:69, ownerLivesHere:false, ownerPropCount:3},
+    {id:6, addr:"Skolegade 18", city:"6700 Esbjerg", kommune:"Esbjerg", region:"Syddanmark", lat:55.4670, lng:8.4520, type:"Flerfamiliehus", area:180, rooms:8, units:2, year:1955, energy:"E", vur:1600000, grundvaerdi:560000, evskat:6530, tax:7200, saleYear:2005, lastSalePrice:1100000, zone:"Boligområde", price:2250000, rent:16500, cost:62000, ownerName:"Preben Sørensen", ownerType:"Privatperson", ownerAge:83, ownerLivesHere:false, ownerPropCount:5},
+    {id:7, addr:"Jernbanegade 7", city:"8700 Horsens", kommune:"Horsens", region:"Midtjylland", lat:55.8610, lng:9.8500, type:"Ejerlejlighed", area:92, rooms:3, units:1, year:1940, energy:"D", vur:1100000, grundvaerdi:330000, evskat:4490, tax:4200, saleYear:2019, lastSalePrice:1260000, zone:"Bymidte", price:1595000, rent:8800, cost:28000, ownerName:"Anne Larsen", ownerType:"Privatperson", ownerAge:55, ownerLivesHere:true, ownerPropCount:2},
+    {id:8, addr:"Søndergade 44", city:"8900 Randers C", kommune:"Randers", region:"Midtjylland", lat:56.4610, lng:10.0360, type:"Enfamiliehus", area:130, rooms:4, units:1, year:1972, energy:"C", vur:1500000, grundvaerdi:680000, evskat:6120, tax:6800, saleYear:2015, lastSalePrice:1380000, zone:"Åben-lav bolig", price:1995000, rent:11000, cost:40000, ownerName:"Bent Nielsen", ownerType:"Privatperson", ownerAge:74, ownerLivesHere:true, ownerPropCount:1},
+    {id:9, addr:"Strandvejen 210", city:"2900 Hellerup", kommune:"Gentofte", region:"Hovedstaden", lat:55.7330, lng:12.5730, type:"Ejerlejlighed", area:96, rooms:3, units:1, year:1932, energy:"C", vur:5200000, grundvaerdi:1560000, evskat:21220, tax:14000, saleYear:2020, lastSalePrice:5900000, zone:"Boligområde", price:6450000, rent:18500, cost:60000, ownerName:"Sofie Berg", ownerType:"Privatperson", ownerAge:48, ownerLivesHere:true, ownerPropCount:1},
+    {id:10, addr:"Frederiksgade 9", city:"7100 Vejle", kommune:"Vejle", region:"Syddanmark", lat:55.7090, lng:9.5350, type:"Ejerlejlighed", area:70, rooms:2, units:1, year:1928, energy:"D", vur:1200000, grundvaerdi:360000, evskat:4900, tax:4000, saleYear:2004, lastSalePrice:780000, zone:"Bymidte", price:1695000, rent:8200, cost:26000, ownerName:"Inger Kjær", ownerType:"Privatperson", ownerAge:76, ownerLivesHere:false, ownerPropCount:2},
+    {id:11, addr:"Vestergade 25", city:"5700 Svendborg", kommune:"Svendborg", region:"Syddanmark", lat:55.0600, lng:10.6080, type:"Flerfamiliehus", area:240, rooms:9, units:3, year:1930, energy:"E", vur:1900000, grundvaerdi:660000, evskat:7750, tax:8400, saleYear:2016, lastSalePrice:2050000, zone:"Bymidte", price:2795000, rent:21000, cost:78000, ownerName:"Sydfyn Ejendomme A/S", ownerType:"Selskab", ownerAge:null, ownerLivesHere:false, ownerPropCount:8},
+    {id:12, addr:"Ny Munkegade 5, 3. th", city:"8000 Aarhus C", kommune:"Aarhus", region:"Midtjylland", lat:56.1630, lng:10.2030, type:"Ejerlejlighed", area:60, rooms:2, units:1, year:1910, energy:"D", vur:2100000, grundvaerdi:630000, evskat:8570, tax:5200, saleYear:2009, lastSalePrice:1400000, zone:"Bymidte", price:2595000, rent:10500, cost:32000, ownerName:"Hanne Poulsen", ownerType:"Privatperson", ownerAge:71, ownerLivesHere:false, ownerPropCount:1},
+    {id:13, addr:"Blågårdsgade 12, 2. th", city:"2200 København N", kommune:"København", region:"Hovedstaden", lat:55.6885, lng:12.5555, type:"Ejerlejlighed", area:62, rooms:2, units:1, year:1905, energy:"D", vur:3100000, grundvaerdi:930000, evskat:12650, tax:4200, saleYear:2002, lastSalePrice:1050000, zone:"Boligområde", price:3600000, rent:12500, cost:40000, ownerName:"Egon Mikkelsen", ownerType:"Privatperson", ownerAge:80, ownerLivesHere:false, ownerPropCount:3},
+    {id:14, addr:"Nordre Frihavnsgade 55, 4. tv", city:"2100 København Ø", kommune:"København", region:"Hovedstaden", lat:55.7075, lng:12.5790, type:"Ejerlejlighed", area:84, rooms:3, units:1, year:1908, energy:"C", vur:4600000, grundvaerdi:1380000, evskat:18770, tax:6800, saleYear:2019, lastSalePrice:4200000, zone:"Boligområde", price:5100000, rent:16000, cost:46000, ownerName:"Camilla Winther", ownerType:"Privatperson", ownerAge:44, ownerLivesHere:true, ownerPropCount:1},
+    {id:15, addr:"Amagerbrogade 128", city:"2300 København S", kommune:"København", region:"Hovedstaden", lat:55.6560, lng:12.6030, type:"Flerfamiliehus", area:260, rooms:8, units:4, year:1932, energy:"D", vur:6200000, grundvaerdi:2170000, evskat:25300, tax:15000, saleYear:2004, lastSalePrice:3400000, zone:"Bymidte", price:8900000, rent:52000, cost:140000, ownerName:"Bo Kristensen", ownerType:"Privatperson", ownerAge:73, ownerLivesHere:false, ownerPropCount:6},
+    {id:16, addr:"Godthåbsvej 90, 3. th", city:"2000 Frederiksberg", kommune:"Frederiksberg", region:"Hovedstaden", lat:55.6900, lng:12.5250, type:"Ejerlejlighed", area:76, rooms:3, units:1, year:1926, energy:"D", vur:3900000, grundvaerdi:1170000, evskat:15910, tax:5200, saleYear:2011, lastSalePrice:2800000, zone:"Boligområde", price:4500000, rent:14000, cost:42000, ownerName:"Frederiksberg Bolig ApS", ownerType:"Selskab", ownerAge:null, ownerLivesHere:false, ownerPropCount:9},
+    {id:17, addr:"Valby Langgade 210", city:"2500 Valby", kommune:"København", region:"Hovedstaden", lat:55.6635, lng:12.5120, type:"Enfamiliehus", area:128, rooms:4, units:1, year:1931, energy:"E", vur:4100000, grundvaerdi:1840000, evskat:16730, tax:9800, saleYear:2001, lastSalePrice:1900000, zone:"Åben-lav bolig", price:5200000, rent:17500, cost:52000, ownerName:"Grethe Andersen", ownerType:"Privatperson", ownerAge:79, ownerLivesHere:true, ownerPropCount:1},
+    {id:18, addr:"Jægersborg Allé 44", city:"2920 Charlottenlund", kommune:"Gentofte", region:"Hovedstaden", lat:55.7500, lng:12.5820, type:"Enfamiliehus", area:210, rooms:6, units:1, year:1928, energy:"C", vur:11500000, grundvaerdi:5180000, evskat:46920, tax:26000, saleYear:2006, lastSalePrice:6800000, zone:"Åben-lav bolig", price:13900000, rent:32000, cost:90000, ownerName:"Henrik Lund", ownerType:"Privatperson", ownerAge:71, ownerLivesHere:false, ownerPropCount:2},
+    {id:19, addr:"Strandvejen 155, 1. tv", city:"2900 Hellerup", kommune:"Gentofte", region:"Hovedstaden", lat:55.7320, lng:12.5740, type:"Ejerlejlighed", area:102, rooms:3, units:1, year:1919, energy:"C", vur:6400000, grundvaerdi:1920000, evskat:26110, tax:15000, saleYear:2018, lastSalePrice:5800000, zone:"Boligområde", price:7300000, rent:21000, cost:58000, ownerName:"Marie Holm", ownerType:"Privatperson", ownerAge:52, ownerLivesHere:true, ownerPropCount:2},
+    {id:20, addr:"Vanløse Allé 30, 2. th", city:"2720 Vanløse", kommune:"København", region:"Hovedstaden", lat:55.6875, lng:12.4890, type:"Ejerlejlighed", area:68, rooms:2, units:1, year:1938, energy:"D", vur:2700000, grundvaerdi:810000, evskat:11020, tax:4000, saleYear:2003, lastSalePrice:990000, zone:"Boligområde", price:3100000, rent:11000, cost:34000, ownerName:"Poul Erik Jensen", ownerType:"Privatperson", ownerAge:82, ownerLivesHere:false, ownerPropCount:4},
+    {id:21, addr:"Gl. Kongevej 120, 4. th", city:"1901 Frederiksberg C", kommune:"Frederiksberg", region:"Hovedstaden", lat:55.6760, lng:12.5460, type:"Ejerlejlighed", area:58, rooms:2, units:1, year:1901, energy:"E", vur:3000000, grundvaerdi:900000, evskat:12240, tax:4100, saleYear:2021, lastSalePrice:3200000, zone:"Bymidte", price:3400000, rent:12000, cost:36000, ownerName:"Sara Nissen", ownerType:"Privatperson", ownerAge:38, ownerLivesHere:true, ownerPropCount:1},
+    {id:22, addr:"Tagensvej 200", city:"2400 København NV", kommune:"København", region:"Hovedstaden", lat:55.7130, lng:12.5450, type:"Flerfamiliehus", area:300, rooms:9, units:4, year:1929, energy:"D", vur:5400000, grundvaerdi:1890000, evskat:22030, tax:13000, saleYear:2007, lastSalePrice:3100000, zone:"Bymidte", price:7600000, rent:46000, cost:128000, ownerName:"Ejendomsselskabet Nord A/S", ownerType:"Selskab", ownerAge:null, ownerLivesHere:false, ownerPropCount:12},
+    {id:23, addr:"Rødovrevej 80", city:"2610 Rødovre", kommune:"Rødovre", region:"Hovedstaden", lat:55.6810, lng:12.4540, type:"Enfamiliehus", area:140, rooms:5, units:1, year:1962, energy:"D", vur:3600000, grundvaerdi:1620000, evskat:14690, tax:8600, saleYear:2013, lastSalePrice:2700000, zone:"Åben-lav bolig", price:4400000, rent:15000, cost:46000, ownerName:"Kurt Pedersen", ownerType:"Privatperson", ownerAge:75, ownerLivesHere:true, ownerPropCount:1},
+    {id:24, addr:"Lyngbyvej 320, 2. tv", city:"2820 Gentofte", kommune:"Gentofte", region:"Hovedstaden", lat:55.7460, lng:12.5560, type:"Ejerlejlighed", area:88, rooms:3, units:1, year:1936, energy:"C", vur:4800000, grundvaerdi:1440000, evskat:19580, tax:9000, saleYear:2005, lastSalePrice:2400000, zone:"Boligområde", price:5600000, rent:17000, cost:50000, ownerName:"Lise Bang", ownerType:"Privatperson", ownerAge:68, ownerLivesHere:false, ownerPropCount:3},
+    {id:25, addr:"Islands Brygge 25, 5. th", city:"2300 København S", kommune:"København", region:"Hovedstaden", lat:55.6640, lng:12.5850, type:"Ejerlejlighed", area:95, rooms:3, units:1, year:2006, energy:"B", vur:5500000, grundvaerdi:1650000, evskat:22440, tax:7200, saleYear:2020, lastSalePrice:5100000, zone:"Bymidte", price:6000000, rent:18500, cost:52000, ownerName:"Thomas Krogh", ownerType:"Privatperson", ownerAge:41, ownerLivesHere:true, ownerPropCount:2},
+    {id:26, addr:"Frederikssundsvej 190", city:"2700 Brønshøj", kommune:"København", region:"Hovedstaden", lat:55.7070, lng:12.4980, type:"Flerfamiliehus", area:220, rooms:6, units:3, year:1934, energy:"E", vur:4200000, grundvaerdi:1470000, evskat:17140, tax:10500, saleYear:2003, lastSalePrice:2200000, zone:"Bymidte", price:6100000, rent:38000, cost:104000, ownerName:"Aage Thomsen", ownerType:"Privatperson", ownerAge:84, ownerLivesHere:false, ownerPropCount:5},
+    {id:27, addr:"Dronningens Tværgade 8, 2. th", city:"1301 København K", kommune:"København", region:"Hovedstaden", lat:55.6830, lng:12.5860, type:"Ejerlejlighed", area:110, rooms:4, units:1, year:1897, energy:"D", vur:6800000, grundvaerdi:2040000, evskat:27740, tax:9500, saleYear:2008, lastSalePrice:4000000, zone:"Bymidte", price:7900000, rent:24000, cost:64000, ownerName:"Vibeke Sørensen", ownerType:"Privatperson", ownerAge:72, ownerLivesHere:false, ownerPropCount:1}
   ];
   var STAGES = ["Ikke kontaktet","Kontaktet","Dialog i gang","Møde afholdt","Interessant","Afsluttet"];
   var nf = new Intl.NumberFormat('da-DK');
   function kr(n){ return nf.format(Math.round(n)) + " kr"; }
-  function pc(n){ return (Math.round(n*10)/10).toFixed(1).replace('.',',') + " %"; }
   function $(id){ return document.getElementById(id); }
   var REAL = {}; // real properties looked up this session, keyed by "bfe<nr>"
   function sameId(a,b){ return String(a)===String(b); }
@@ -373,11 +406,193 @@
 
   /* ---- Map ---- */
   var map=null, markers={}, markerLayer=null;
+
+  // Ortofoto: med en gratis Dataforsyningen-nøgle bruges det officielle danske
+  // ortofoto (12,5 cm). Uden nøgle bruges Esri's luftfoto, så kortet altid virker.
+  // Nøgle hentes gratis på dataforsyningen.dk → Min side → Token.
+  var DAF_TOKEN = "";
+  var MATRIKEL_MIN_ZOOM = 15;
+  var matrikelLayer=null, matrikelCache={}, matrikelReq=null, matrikelTimer=null, matrikelLast=null;
+  var matrikelPopupAaben=false;
+  var matrikelColor="#e5007d";
+  function matrikelStyle(){ return {color:matrikelColor, weight:1.2, opacity:.95, fillColor:matrikelColor, fillOpacity:.06}; }
+
+  // Baggrundskort. Med nøgle bruges Geodatastyrelsens/SDFI's egne kort — samme
+  // som på matriklen.dk. Uden nøgle bruges frie kort med tilsvarende udseende.
+  function baggrundskort(){
+    if(DAF_TOKEN){
+      return {
+        "Skærmkort (dæmpet)": L.tileLayer.wms('https://api.dataforsyningen.dk/topo_skaermkort_DAF?token='+DAF_TOKEN, {
+          layers:'dtk_skaermkort_daempet', format:'image/png', transparent:false, version:'1.3.0',
+          maxZoom:20, attribution:'Skærmkort © SDFI'
+        }),
+        "Ortofoto": L.tileLayer.wms('https://api.dataforsyningen.dk/orto_foraar_DAF?token='+DAF_TOKEN, {
+          layers:'orto_foraar', format:'image/jpeg', transparent:false, version:'1.3.0',
+          maxZoom:21, attribution:'Ortofoto © SDFI'
+        })
+      };
+    }
+    return {
+      "Skærmkort (dæmpet)": L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom:19, subdomains:'abcd', attribution:'© OpenStreetMap, © CARTO'
+      }),
+      "Ortofoto": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom:19, attribution:'Luftfoto © Esri'
+      })
+    };
+  }
+
   function initMap(){
     if(typeof L==="undefined"){ $("map").innerHTML='<div class="empty" style="padding:150px 0;">Kort kunne ikke indlæses (offline).</div>'; return; }
     map = L.map('map', {scrollWheelZoom:true}).setView([56.0, 10.6], 7);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
+
+    // eget lag-plan til matriklen, så ejendomspins altid ligger øverst
+    map.createPane('matrikel');
+    map.getPane('matrikel').style.zIndex = 350;
+
+    var baser = baggrundskort();
+    baser["Skærmkort (dæmpet)"].addTo(map);
+
+    matrikelLayer = L.layerGroup().addTo(map);
     markerLayer = L.layerGroup().addTo(map);
+
+    L.control.layers(baser, {"Matrikelskel":matrikelLayer}).addTo(map);
+
+    map.on('moveend', scheduleMatrikel);
+    map.on('overlayadd overlayremove', scheduleMatrikel);
+    map.on('baselayerchange', function(e){
+      // gule skel på luftfoto, magenta på det lyse skærmkort
+      matrikelColor = e.name==="Ortofoto" ? "#ffd400" : "#e5007d";
+      matrikelLast=null; // tving gentegning, så skellene får den nye farve
+      loadMatrikel();
+    });
+    scheduleMatrikel();
+  }
+
+  /* ---- Ejendomsdata på et klikket jordstykke ----
+     Adresse + postnummer + antal enheder kommer fra DAWA (åbne data).
+     Ejendomstype og enhedsfordeling kommer fra BBR via vores Worker-proxy. */
+  var jsCache = {};
+
+  function matrikelPopup(p, krop){
+    var h='<b>Matr.nr. '+(p.matrikelnr||"–")+'</b><br><span class="pop-dim">'+(p.ejerlavnavn||"")+'</span>'+
+      (p.registreretareal!=null? '<br>Grundareal: '+nf.format(p.registreretareal)+" m²" : "")+
+      (p.bfenummer? '<br>BFE-nummer: '+p.bfenummer : "");
+    return h+'<div class="pop-body">'+(krop||'<span class="pop-dim">Henter ejendomsdata…</span>')+'</div>';
+  }
+
+  function bygningstype(prof){
+    var anv=(prof.bygninger||[]).map(function(b){ return String(b.anvendelse||""); });
+    if(anv.some(function(a){return /etagebolig|flerfamilie/i.test(a);})) return "Flerfamiliehus";
+    if(anv.some(function(a){return /række|kæde|dobbelthus/i.test(a);})) return "Række-/dobbelthus";
+    if(anv.some(function(a){return /enfamilie/i.test(a);})) return "Enfamiliehus";
+    var navne=anv.filter(function(a){ return a && !/^\d+$/.test(a); }); // ukendte BBR-koder springes over
+    return navne.length? navne[0] : null;
+  }
+
+  function ejendomsInfo(adr, prof){
+    var f=adr[0];
+    var h='<b>'+f.vejnavn+' '+f.husnr+'</b><br>'+f.postnr+' '+f.postnrnavn;
+    var typer=[];
+    if(prof){
+      if(prof.ejerforening && prof.ejerforening.antalEjerlejligheder)
+        typer.push("opdelt i "+prof.ejerforening.antalEjerlejligheder+" ejerlejligheder");
+      var bt=bygningstype(prof); if(bt) typer.unshift(bt);
+    }
+    if(typer.length) h+='<br>Type: '+typer.join(" · ");
+    var e=prof&&prof.enheder;
+    if(e && (e.bolig!=null || e.erhverv!=null)){
+      h+='<br>Beboelsesenheder: '+(e.bolig!=null?e.bolig:"–")+
+         '<br>Erhvervsenheder: '+(e.erhverv!=null?e.erhverv:"–");
+    } else {
+      h+='<br>Enheder med egen adresse: '+adr.length;
+    }
+    if(prof && prof.ejerforhold) h+='<br>Ejerforhold: '+prof.ejerforhold;
+    if(f.betegnelse) h+='<button class="pop-btn" onclick="seEjendom(\''+encodeURIComponent(f.betegnelse)+'\')">Se ejendom ↗</button>';
+    return h;
+  }
+
+  // Åbner ejendommens overblik i et nyt faneblad. Adressen ligger i URL'en, så
+  // linket kan deles og flere ejendomme kan holdes åbne side om side.
+  window.seEjendom = function(enc){
+    var adresse=decodeURIComponent(enc);
+    var vindue=window.open(location.pathname+'?adresse='+encodeURIComponent(adresse), '_blank');
+    if(!vindue) doLookup(adresse); // hvis browseren blokerer nye faneblade
+  };
+
+  function enrichJordstykke(layer, p){
+    var key=p.ejerlavkode+"/"+p.matrikelnr;
+    if(jsCache[key]!==undefined){ layer.setPopupContent(matrikelPopup(p, jsCache[key])); return; }
+    fetch('https://api.dataforsyningen.dk/adresser?struktur=mini&per_side=200&ejerlavkode='+
+          encodeURIComponent(p.ejerlavkode)+'&matrikelnr='+encodeURIComponent(p.matrikelnr))
+      .then(function(r){ return r.ok? r.json() : []; })
+      .then(function(adr){
+        if(!adr.length){
+          var t='<span class="pop-dim">Ingen adresser på matriklen — fx vej- eller fællesareal.</span>';
+          jsCache[key]=t; layer.setPopupContent(matrikelPopup(p,t)); return;
+        }
+        layer.setPopupContent(matrikelPopup(p, ejendomsInfo(adr,null)+'<br><span class="pop-dim">Henter BBR…</span>'));
+        return fetch(PROXY_URL+'/ejendom?adresse='+encodeURIComponent(adr[0].betegnelse))
+          .then(function(r){ return r.ok? r.json() : null; })
+          .catch(function(){ return null; })
+          .then(function(prof){
+            var html=ejendomsInfo(adr, (prof && !prof.error) ? prof : null);
+            jsCache[key]=html; layer.setPopupContent(matrikelPopup(p, html));
+          });
+      })
+      .catch(function(){ layer.setPopupContent(matrikelPopup(p,'<span class="pop-dim">Kunne ikke hente ejendomsdata.</span>')); });
+  }
+
+  /* ---- Matrikel (jordstykker) fra DAWA — åbne data, ingen nøgle ---- */
+  function matrikelHint(msg){ var el=$("matrikel-hint"); if(el) el.textContent=msg; }
+  function scheduleMatrikel(){ clearTimeout(matrikelTimer); matrikelTimer=setTimeout(loadMatrikel, 350); }
+
+  function loadMatrikel(){
+    if(!map || !matrikelLayer) return;
+    if(!map.hasLayer(matrikelLayer)){ matrikelLayer.clearLayers(); matrikelLast=null; matrikelHint(""); return; }
+    // Så længe en jordstykke-popup er åben, må laget ikke gentegnes — gentegning
+    // fjerner laget og lukker dermed popup'en midt i brugerens opslag.
+    if(matrikelPopupAaben) return;
+    if(map.getZoom() < MATRIKEL_MIN_ZOOM){
+      matrikelLayer.clearLayers(); matrikelLast=null;
+      matrikelHint("Zoom ind for at se matrikelskel (jordstykker).");
+      return;
+    }
+    var c=map.getCenter(), z=map.getZoom();
+    var radius=Math.min(Math.round(c.distanceTo(map.getBounds().getNorthEast())), 1200);
+    // Små panoreringer — fx Leaflets auto-pan når en popup åbnes — må ikke gentegne
+    // laget, for så forsvinder den popup brugeren lige har åbnet.
+    if(matrikelLast && matrikelLast.zoom===z &&
+       c.distanceTo(L.latLng(matrikelLast.lat, matrikelLast.lng)) < radius*0.35) return;
+    matrikelLast={lat:c.lat, lng:c.lng, zoom:z, radius:radius};
+
+    var key=c.lat.toFixed(4)+","+c.lng.toFixed(4)+","+radius;
+    if(matrikelCache[key]){ drawMatrikel(matrikelCache[key]); return; }
+    if(matrikelReq) matrikelReq.abort();
+    matrikelReq = new AbortController();
+    matrikelHint("Henter matrikelskel…");
+    fetch('https://api.dataforsyningen.dk/jordstykker?format=geojson&srid=4326&cirkel='+c.lng.toFixed(6)+','+c.lat.toFixed(6)+','+radius, {signal:matrikelReq.signal})
+      .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(gj){ matrikelCache[key]=gj; drawMatrikel(gj); })
+      .catch(function(err){ if(err.name==="AbortError") return; matrikelLast=null; matrikelHint("Kunne ikke hente matrikelskel."); });
+  }
+
+  function drawMatrikel(gj){
+    matrikelLayer.clearLayers();
+    var base=matrikelStyle();
+    L.geoJSON(gj, {
+      pane:'matrikel',
+      style:base,
+      onEachFeature:function(f,l){
+        var p=f.properties||{};
+        l.bindPopup(matrikelPopup(p), {minWidth:230});
+        l.on('popupopen', function(){ matrikelPopupAaben=true; enrichJordstykke(l, p); });
+        l.on('popupclose', function(){ matrikelPopupAaben=false; scheduleMatrikel(); });
+        l.on('mouseover', function(){ l.setStyle({weight:2.5, fillOpacity:.20}); });
+        l.on('mouseout',  function(){ l.setStyle(base); });
+      }
+    }).addTo(matrikelLayer);
+    matrikelHint((gj.features||[]).length+" jordstykker · klik et for matrikelnr., areal og BFE-nummer");
   }
   function renderMarkers(list){
     if(!map) return;
@@ -581,74 +796,254 @@
   function dcard(k,v,s){ return '<div class="dcard"><div class="k">'+k+'</div><div class="v">'+v+'</div><div class="s">'+s+'</div></div>'; }
 
   /* ---- Business case (detail) — unchanged evaluation page ---- */
-  var current=null, detailReturn="find";
+  var detailReturn="find";
   window.backFromDetail=function(){ showView(detailReturn); };
   function openDetail(id){
     var av=document.querySelector(".view.active");
     if(av && av.id!=="view-detail") detailReturn=av.id.replace("view-","");
-    current=byId(id); var d=current;
+    var d=byId(id);
     if(!d){ toast("Ejendommen kunne ikke findes"); return; }
     var vVur=d.vur!=null?kr(d.vur):"–", vTax=d.tax!=null?kr(d.tax):"–",
         vHandel=d.saleYear?(d.saleYear+" · "+kr(d.lastSalePrice)):"– (kræver Tinglysning)",
         vEnergy=d.energy?energyHtml(d.energy):"–", vZone=d.zone||"–", vYear=d.year||"–";
+    // De kilder vi endnu ikke har adgang til, samlet i én linje i stedet for tomme felter
+    var mangler=[];
+    if(d.vur==null) mangler.push("Ejendomsværdi");
+    if(d.grundvaerdi==null) mangler.push("Grundværdi");
+    if(d.evskat==null) mangler.push("Ejendomsværdiskat");
+    if(d.tax==null) mangler.push("Grundskyld");
+    if(!d.energy) mangler.push("Energimærke");
+    if(!d.zone) mangler.push("Zone");
+    if(!d.year) mangler.push("Opførelsesår");
+    // Chips under adressen: kommune, matrikel, anvendelse — som på Resights
+    var byg0=(d.bygninger||[])[0]||{};
+    var anvendelse=byg0.anvendelse||d.type||"";
+    var chips="";
+    if(d.kommune) chips+='<span class="dchip">⚲ '+d.kommune+' Kommune</span>';
+    if(d.matrikel) chips+='<span class="dchip">▦ '+d.matrikel.ejerlavNavn+', '+d.matrikel.matrikelnr+'</span>';
+    if(anvendelse) chips+='<span class="dchip">▤ '+anvendelse+(d.year?' ('+d.year+')':'')+'</span>';
+
+    var ejl=d.ejl, enh=d.enheder||null;
+    if(!enh) mangler.push("Enhedsfordeling (BBR)");
+
+    // Kasse 1 — enheden/ejendommen, samme rækkefølge som Resights
+    var noegle=
+      (ejl? kfelt(ejl.værelser, "Værelser")+
+            kfelt(ejl.tinglystArealM2!=null? ejl.tinglystArealM2+" m²":null, "Tinglyst areal")
+          : kfelt(d.rooms, "Værelser")+
+            kfelt(d.grundareal!=null? d.grundareal+" m²":null, "Grundareal"))+
+      kfelt(enh&&enh.boligArealM2!=null? enh.boligArealM2+" m²"
+            : (ejl&&ejl.enhedArealM2!=null? ejl.enhedArealM2+" m²"
+            : (d.area? d.area+" m²":null)), "Beboelsesareal")+
+      kfelt(enh&&enh.erhvervArealM2!=null? enh.erhvervArealM2+" m²":null, "Erhvervsareal")+
+      kfelt(enh&&enh.bolig!=null? enh.bolig : d.units, "Beboelsesenheder")+
+      kfelt(enh&&enh.erhverv!=null? enh.erhverv : null, "Erhvervsenheder");
+
+    // Kasse 1, sidste sektion — ejendommens øvrige stamdata
+    var stam=
+      kfelt(d.energy?energyHtml(d.energy):null, "Energimærke")+
+      kfelt(d.zone, "Zone")+
+      kfelt(ejl? ejl.parentBfe : null, "Hovedejendom (BFE)")+
+      (!ejl && (d.bygninger||[]).length?
+        kfelt(d.bygninger.map(function(b){return b.anvendelse+(b.opført?" ("+b.opført+")":"");}).join(" · "), "Bygninger") : "");
+
+    // Kasse 2 — ejerskab og økonomi. Kvadratmeterprisen regnes ud af handelspris
+    // og areal; den står ikke i registrene som selvstændigt tal.
+    var arealTilPris = (enh&&enh.boligArealM2) || (ejl&&ejl.tinglystArealM2) || d.area || null;
+    var prisPrM2 = (d.lastSalePrice && arealTilPris) ? Math.round(d.lastSalePrice/arealTilPris) : null;
+    var handel=
+      kfelt(d.saleYear? kr(d.lastSalePrice) : null, "Handelspris")+
+      kfelt(d.saleYear || null, "Salgsår")+
+      kfelt(prisPrM2? nf.format(prisPrM2)+" kr/m²" : null, "Pris pr. m²");
+    var vurdering=
+      kfelt(d.vur!=null? kr(d.vur):null, "Ejendomsværdi")+
+      kfelt(d.evskat!=null? kr(d.evskat):null, "Ejendomsværdiskat / år")+
+      kfelt(d.grundvaerdi!=null? kr(d.grundvaerdi):null, "Grundværdi")+
+      kfelt(d.tax!=null? kr(d.tax):null, "Grundskyld / år");
+    // Ejernavn og handelshistorik er kildeafhængige. Manglende data hører hjemme
+    // som en dæmpet note — ikke som et stort tal der ligner en værdi.
+    var ejerNavn = (d.ownerName && d.ownerName.charAt(0)!=="–") ? d.ownerName : null;
+
     $("detail-body").innerHTML =
-      '<div class="grid2">'+
-        '<div class="card facts">'+
-          '<div class="addr">⚲ '+d.addr+(d.real?'<span class="real-badge">✓ registerdata</span>':'')+'</div><div class="sub">'+d.city+' · '+d.type+'</div>'+
-          '<div class="fgrid">'+
-            fact("Ejer", d.ownerName)+fact("Ejerskabstype", d.ownerType+(d.ownerAge?", "+d.ownerAge+" år":""))+
-            fact("Areal", d.area+" m²")+fact("Boligenheder", d.units)+fact("Opført", vYear)+fact("Energimærke", vEnergy)+
-            fact("Off. vurdering", vVur)+fact("Grundskyld / år", vTax)+fact("Seneste handel", vHandel)+fact("Zone", vZone)+
-            (d.real? fact("BFE-nummer", d.bfe)
-              +fact("Matrikel", d.matrikel? d.matrikel.ejerlavNavn+" "+d.matrikel.matrikelnr : "–")
-              +fact("Grundareal", d.grundareal!=null? d.grundareal+" m²" : "–")
-              +(d.ejl? "" : fact("Bygninger", (d.bygninger||[]).map(function(b){return b.anvendelse+(b.opført?" ("+b.opført+")":"");}).join(" · ")||"–"))
-            : '')+
-            (d.real&&d.ejl?
-              fact("Ejerlejlighedsnr", d.ejl.nummer!=null?d.ejl.nummer:"–")
-              +fact("Tinglyst areal", d.ejl.tinglystArealM2!=null?d.ejl.tinglystArealM2+" m²":"–")
-              +fact("Enhedsareal (BBR)", d.ejl.enhedArealM2!=null?d.ejl.enhedArealM2+" m²":"–")
-              +fact("Værelser", d.ejl.værelser!=null?d.ejl.værelser:"–")
-              +fact("Fordelingstal", d.ejl.fordelingstal||"–")
-              +fact("Moderejendom (BFE)", d.ejl.parentBfe||"–")
-            : '')+
-          '</div>'+
-          (d.real&&d.ejl&&d.ejl.parentAdresse?
-            '<button class="btn ghost sm" id="parent-btn" data-adr="'+d.ejl.parentAdresse+'" style="margin-top:14px; width:100%;">Se hele ejendommen / ejerforeningen</button>' : '')+
-          (d.real&&d.ejerforening?
-            '<div style="margin-top:16px;"><div style="font-size:12px; color:var(--faint); font-weight:600; text-transform:uppercase; letter-spacing:.04em;">Opdelt i '+d.ejerforening.antalEjerlejligheder+' ejerlejligheder — klik for at åbne</div>'+
-            '<div class="ef-list">'+(d.ejerforening.lejligheder||[]).map(function(adr){return '<div class="ef-item" data-adr="'+adr+'">'+adr+'</div>';}).join("")+'</div></div>' : '')+
-          '<button class="btn '+(inPipe(d.id)?'ghost':'')+'" style="margin-top:18px; width:100%;" id="pipe-btn">'+(inPipe(d.id)?'✓ I din pipeline':'+ Gem som lead')+'</button>'+
+      '<div class="dhead">'+
+        '<div>'+
+          '<div class="addr">⚲ '+d.addr+(d.city? ', '+d.city : '')+(d.real?'<span class="real-badge">✓ registerdata</span>':'')+'</div>'+
+          (d.bfe? '<div class="ids">BFE: '+d.bfe+'</div>' : '')+
+          (chips? '<div class="dchips">'+chips+'</div>' : '')+
         '</div>'+
-        '<div class="card calc">'+
-          '<div style="font-weight:600; margin-bottom:14px;">Investeringscase</div>'+
-          sl("price","Købspris",500000,8000000,25000,d.price)+sl("rent","Forventet leje / md",3000,60000,100,d.rent)+
-          sl("vac","Tomgang (%)",0,20,1,4)+sl("down","Udbetaling (%)",5,50,1,20)+sl("rate","Rente (%)",0,8,0.1,4.5)+sl("cost","Driftsudgifter / år",0,200000,1000,d.cost)+
-          '<div class="results">'+mc("cf","Likviditet / md")+mc("coc","Egenkapitalforrentning")+mc("gross","Bruttoafkast")+mc("net","Nettoafkast")+'</div>'+
-          '<div class="subline"><span>Egenkapital: <b id="r-equity">—</b></span><span>Ydelse/md: <b id="r-pmt">—</b></span><span>Break-even leje: <b id="r-be">—</b></span></div>'+
+        '<div class="detail-acts">'+
+          (d.real&&ejl&&ejl.parentAdresse?
+            '<button class="btn ghost sm" id="parent-btn" data-adr="'+ejl.parentAdresse+'">Se hovedejendommen</button>' : '')+
+          '<button class="btn sm '+(inPipe(d.id)?'ghost':'')+'" id="pipe-btn">'+(inPipe(d.id)?'✓ I din pipeline':'+ Gem som lead')+'</button>'+
+        '</div>'+
+      '</div>'+
+      '<div class="dgrid">'+
+        '<div class="dcol">'+
+          '<div class="boxes">'+
+          '<div class="kcard">'+
+            '<div class="kcard-t">'+
+              '<span class="kicon">▦</span>'+
+              (ejl? 'Ejerlejlighed'+(ejl.nummer!=null? ' nr. '+ejl.nummer:'') : 'Ejendom')+
+              (ejl&&ejl.fordelingstal? '<span class="fine">('+ejl.fordelingstal+')</span>' : '')+
+              (d.real&&ejl&&ejl.parentAdresse? '<button class="lnk" id="moder-btn" data-adr="'+ejl.parentAdresse+'">Gå til hovedejendommen →</button>' : '')+
+            '</div>'+
+            kblok(noegle)+kblok(stam)+
+          '</div>'+
+          '<div class="kcard">'+
+            '<div class="kcard-t">'+
+              '<span class="kicon">☖</span>'+
+              (ejerNavn || 'Ejerforhold')+
+              (d.ownerType? '<span class="fine">'+d.ownerType+(d.ownerAge?', '+d.ownerAge+' år':'')+'</span>' : '')+
+            '</div>'+
+            (ejerNavn? '' : knote('Ejernavn kræver EJF-certifikat'))+
+            (handel? kblok(handel,"Seneste handel") : knote('Handelshistorik kræver adgang til Tinglysning'))+
+            (vurdering? kblok(vurdering,"Vurdering") : knote('Vurdering og grundskyld kræver adgang til VUR'))+
+          '</div>'+
+          '</div>'+
+          (mangler.length? '<div class="mangler" style="margin:0; border:none; padding:0;"><b>Ikke koblet på endnu:</b> '+mangler.join(" · ")+'</div>' : '')+
+          (d.real&&d.matrikel? '<div class="kcard" id="enheder-kort" style="display:none;">'+
+            '<div class="kcard-t"><span class="kicon">☰</span><span id="enheder-titel">Enheder på hovedejendommen</span>'+
+            '<span class="fine" id="enheder-fine"></span></div>'+
+            '<div class="ef-list" id="enheder-liste" style="margin:0; border:none; border-radius:0;"></div>'+
+            '<div class="knote" id="enheder-note"></div>'+
+          '</div>' : '')+
+        '</div>'+
+        '<div class="kcard">'+
+          '<div id="detail-map" class="dmap"></div>'+
+          '<div class="dmap-note" id="dmap-note"></div>'+
         '</div>'+
       '</div>';
-    ["price","rent","vac","down","rate","cost"].forEach(function(k){ $("s-"+k).addEventListener("input", compute); });
     $("pipe-btn").addEventListener("click", function(){ addPipe(d.id); openDetail(d.id); });
-    var pbtn=document.getElementById("parent-btn");
-    if(pbtn) pbtn.addEventListener("click", function(){ doLookup(pbtn.getAttribute("data-adr")); });
-    document.querySelectorAll("#detail-body .ef-item").forEach(function(el){
-      el.addEventListener("click", function(){ doLookup(el.getAttribute("data-adr")); });
+    ["parent-btn","moder-btn"].forEach(function(bid){
+      var b=document.getElementById(bid);
+      if(b) b.addEventListener("click", function(){ doLookup(b.getAttribute("data-adr")); });
     });
-    compute(); showView("detail");
+    indlaesEnheder(d);
+    showView("detail");
+    initDetailMap(d); // efter showView, ellers har kortbeholderen ingen størrelse endnu
   }
-  function fact(k,v){ return '<div><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
-  function sl(k,lbl,mn,mx,st,val){ return '<div class="slider"><div class="top"><span class="lbl">'+lbl+'</span><span class="out" id="o2-'+k+'"></span></div><input id="s-'+k+'" type="range" min="'+mn+'" max="'+mx+'" step="'+st+'" value="'+val+'"></div>'; }
-  function mc(k,lbl){ return '<div class="metric" id="card-'+k+'"><div class="k">'+lbl+'</div><div class="v" id="r-'+k+'">—</div></div>'; }
-  function compute(){
-    var P=+$("s-price").value, Rm=+$("s-rent").value, vac=+$("s-vac").value, dn=+$("s-down").value, i=+$("s-rate").value, D=+$("s-cost").value;
-    $("o2-price").textContent=kr(P); $("o2-rent").textContent=kr(Rm); $("o2-vac").textContent=vac+" %"; $("o2-down").textContent=dn+" %"; $("o2-rate").textContent=pc(i); $("o2-cost").textContent=kr(D);
-    var R=Rm*12*(1-vac/100), down=P*dn/100, fees=Math.round(P*0.006)+1850+6000, equity=down+fees, loan=P-down;
-    var r=i/100/12, n=360, pmtM=r===0?loan/n:loan*r/(1-Math.pow(1+r,-n)), debtYr=pmtM*12, noi=R-D, cfM=(noi-debtYr)/12;
-    $("r-gross").textContent=pc(R/P*100); $("r-net").textContent=pc(noi/P*100); $("r-coc").textContent=pc((noi-debtYr)/equity*100);
-    $("r-cf").textContent=(cfM>=0?"+":"−")+kr(Math.abs(cfM));
-    $("card-cf").style.background=cfM>=0?"var(--green-bg)":"var(--red-bg)"; $("r-cf").style.color=cfM>=0?"var(--green)":"var(--red)";
-    $("r-equity").textContent=kr(equity); $("r-pmt").textContent=kr(pmtM); $("r-be").textContent=kr((D+debtYr)/12/(1-vac/100));
+  // Tomme felter udelades — et felt med bare "–" fylder uden at oplyse noget.
+  // Værdier som "– (kræver Tinglysning)" beholdes, for de forklarer hvorfor.
+  /* ---- Kort på ejendomssiden — samme lag som forsiden, matriklen fremhævet ---- */
+  var dMap=null, dNaboLag=null, dEgenLag=null, dNaboGeo=null, dFarve="#e5007d";
+
+  function tegnNaboMatrikler(){
+    if(!dNaboLag || !dNaboGeo) return;
+    dNaboLag.clearLayers();
+    L.geoJSON(dNaboGeo, {pane:'dnabo',
+      style:{color:dFarve, weight:1, opacity:.8, fillColor:dFarve, fillOpacity:.04}}).addTo(dNaboLag);
+  }
+
+  function initDetailMap(d){
+    var el=$("detail-map");
+    if(!el || typeof L==="undefined") return;
+    if(d.lat==null || d.lng==null){ el.innerHTML='<div class="empty" style="padding:130px 0;">Ingen koordinater på ejendommen.</div>'; return; }
+
+    // Beholderen bygges på ny hver gang siden tegnes, så det gamle kort skal rives ned først
+    if(dMap){ dMap.remove(); dMap=null; }
+    dMap=L.map('detail-map', {scrollWheelZoom:false}).setView([d.lat,d.lng], 18);
+    dMap.createPane('dnabo'); dMap.getPane('dnabo').style.zIndex=350;
+    dMap.createPane('degen'); dMap.getPane('degen').style.zIndex=360;
+
+    var baser=baggrundskort();
+    baser["Skærmkort (dæmpet)"].addTo(dMap);
+    L.control.layers(baser).addTo(dMap);
+    dNaboLag=L.layerGroup().addTo(dMap);
+    dEgenLag=L.layerGroup().addTo(dMap);
+    dMap.on('baselayerchange', function(e){
+      dFarve = e.name==="Ortofoto" ? "#ffd400" : "#e5007d";
+      tegnNaboMatrikler();
+    });
+    setTimeout(function(){ if(dMap) dMap.invalidateSize(); }, 60);
+
+    dNaboGeo=null;
+    fetch('https://api.dataforsyningen.dk/jordstykker?format=geojson&srid=4326&cirkel='+d.lng.toFixed(6)+','+d.lat.toFixed(6)+',250')
+      .then(function(r){ return r.ok? r.json() : null; })
+      .then(function(gj){ if(gj){ dNaboGeo=gj; tegnNaboMatrikler(); } })
+      .catch(function(){});
+
+    if(d.matrikel && d.matrikel.ejerlavKode && d.matrikel.matrikelnr){
+      fetch('https://api.dataforsyningen.dk/jordstykker?format=geojson&srid=4326&ejerlavkode='+
+            encodeURIComponent(d.matrikel.ejerlavKode)+'&matrikelnr='+encodeURIComponent(d.matrikel.matrikelnr))
+        .then(function(r){ return r.ok? r.json() : null; })
+        .then(function(gj){
+          if(!dMap || !gj || !(gj.features||[]).length) return;
+          var lag=L.geoJSON(gj, {pane:'degen',
+            style:{color:"#dc2626", weight:2.5, opacity:1, fillColor:"#dc2626", fillOpacity:.12}}).addTo(dEgenLag);
+          dMap.invalidateSize(); // sikrer rigtige mål, så zoomniveauet bliver korrekt
+          dMap.fitBounds(lag.getBounds(), {padding:[28,28], maxZoom:19});
+        }).catch(function(){});
+      dNote("Matriklen er markeret med rødt · skift mellem skærmkort og ortofoto øverst til højre");
+    } else {
+      L.circleMarker([d.lat,d.lng], {pane:'degen', radius:9, fillColor:"#dc2626", color:"#fff", weight:2, fillOpacity:.95}).addTo(dEgenLag);
+      dNote("Placering markeret med rødt · matrikel vises når ejendommen slås op i registrene");
+    }
+  }
+  function dNote(t){ var n=$("dmap-note"); if(n) n.textContent=t; }
+
+  function tom(v){ return v==null || v==="" || v==="–"; }
+  function kfelt(v,k){ return tom(v)? "" : '<div><div class="v">'+v+'</div><div class="k">'+k+'</div></div>'; }
+  // En sektion i et datakort. Tom sektion udelades, så der ikke står en stribe uden indhold.
+  function kblok(felter, gruppe){
+    if(!felter) return "";
+    return '<div class="kgrid">'+(gruppe? '<div class="kglabel">'+gruppe+'</div>' : '')+felter+'</div>';
+  }
+  function knote(t){ return '<div class="knote">'+t+'</div>'; }
+
+  /* ---- Alle enheder på hovedejendommen ----
+     Adresserne hentes fra DAWA på ejerlav + matrikelnr. Det virker både når man
+     står på hovedejendommen og på en enkelt ejerlejlighed, og kræver ingen nøgle. */
+  function indlaesEnheder(d){
+    var kort=$("enheder-kort"), liste=$("enheder-liste");
+    if(!kort || !liste || !d.matrikel || !d.matrikel.ejerlavKode) return;
+    var mig=(d.addr+(d.city? ", "+d.city : "")).toLowerCase();
+
+    // BBR-enhederne kommer fra worker'en i ét kald og joines på DAR-adressens uuid
+    var pr={};
+    (d.enhedsliste||[]).forEach(function(e){ if(e.adresseId) pr[e.adresseId]=e; });
+    var harAreal=(d.enhedsliste||[]).some(function(e){ return e.boligArealM2!=null || e.samletArealM2!=null; });
+
+    fetch('https://api.dataforsyningen.dk/adresser?struktur=mini&per_side=300&ejerlavkode='+
+          encodeURIComponent(d.matrikel.ejerlavKode)+'&matrikelnr='+encodeURIComponent(d.matrikel.matrikelnr))
+      .then(function(r){ return r.ok? r.json() : []; })
+      .then(function(adr){
+        if(adr.length<2) return; // én enhed — så er listen uden værdi
+        adr.sort(function(a,b){ return (a.betegnelse||"").localeCompare(b.betegnelse||"", "da"); });
+        $("enheder-fine").textContent = adr.length+" enheder · klik en række for at åbne";
+
+        // Gade og postnummer er ens for alle rækker — vejnavnet tages kun med hvis
+        // ejendommen faktisk har flere veje, ellers fylder det bare.
+        var flereVeje = adr.some(function(a){ return a.vejnavn!==adr[0].vejnavn; });
+        function enhedLabel(a){
+          var etd=((a.etage? a.etage+"." : "")+(a.dør? " "+a.dør : "")).trim();
+          return (flereVeje? (a.vejnavn||"")+" " : "")+(a.husnr||"")+(etd? ", "+etd : "");
+        }
+
+        var rk=adr.map(function(a){
+          var t=a.betegnelse||"", her=t.toLowerCase()===mig, e=pr[a.id]||{};
+          var areal = e.boligArealM2!=null? e.boligArealM2+" m²" : (e.samletArealM2!=null? e.samletArealM2+" m²" : "–");
+          return '<tr class="etab-r'+(her?' her':'')+'" data-adr="'+t+'" title="'+t+'">'+
+            '<td>'+enhedLabel(a)+(her?' <span class="ef-her">du er her</span>':'')+'</td>'+
+            (harAreal? '<td class="num">'+areal+'</td>' : '')+
+            '<td class="dim">–</td><td class="dim">–</td><td class="num dim">–</td>'+
+          '</tr>';
+        }).join("");
+
+        liste.innerHTML =
+          '<table class="etab"><thead><tr>'+
+            '<th>Enhed</th>'+(harAreal? '<th class="num">Beboelsesareal</th>' : '')+
+            '<th>Ejer</th><th>Seneste handel</th><th class="num">Handelspris</th>'+
+          '</tr></thead><tbody>'+rk+'</tbody></table>';
+
+        liste.querySelectorAll(".etab-r").forEach(function(el){
+          el.addEventListener("click", function(){ doLookup(el.getAttribute("data-adr")); });
+        });
+        $("enheder-note").textContent = harAreal
+          ? "Ejer og handelshistorik pr. enhed kræver adgang til EJF og Tinglysning."
+          : "Areal, ejer og handelshistorik pr. enhed kræver adgang til BBR-enheder, EJF og Tinglysning.";
+        kort.style.display="";
+      })
+      .catch(function(){});
   }
 
   /* ---- Pipeline (board + list) ---- */
@@ -719,16 +1114,21 @@
     var parts=(p.adresse||"").split(",");
     var city=(parts.pop()||"").trim();
     var addr=parts.join(",").trim()||p.adresse||"";
+    var v=p.vurdering||{};
     return { id:"bfe"+p.bfe, real:true,
-      addr:addr, city:city,
+      addr:addr, city:city, kommune:p.kommune?p.kommune.navn:null,
       region:"", lat:p.koordinater?p.koordinater[1]:null, lng:p.koordinater?p.koordinater[0]:null,
       type:p.ejendomstype||"Ejendom", area:areal, rooms:ejl?ejl.værelser:null,
       units: p.ejerforening ? (p.ejerforening.antalEjerlejligheder||1)
            : (ejl ? 1 : ((p.bygninger||[]).filter(function(b){return b.boligarealM2;}).length||1)),
-      year:b0.opført||null, energy:null, vur:null, tax:null, saleYear:null, lastSalePrice:null, zone:null,
+      year:b0.opført||null, energy:null, saleYear:null, lastSalePrice:null, zone:null,
+      // Vurderingstal kommer fra VUR, som kræver særskilt adgang hos Vurderingsstyrelsen.
+      // Når worker'en leverer dem, falder de på plads her uden andre ændringer.
+      vur:v.ejendomsvaerdi, grundvaerdi:v.grundvaerdi, evskat:v.ejendomsvaerdiskat, tax:v.grundskyld,
       price:2500000, rent:Math.max(3000,Math.round(areal*1)*100), cost:Math.max(10000,Math.round(areal*0.25)*1000),
       ownerName:"– (kræver EJF-certifikat)", ownerType:p.ejerforhold||"–", ownerAge:null, ownerLivesHere:true, ownerPropCount:null,
       bfe:p.bfe, matrikel:p.matrikel, grundareal:p.matrikel?p.matrikel.grundarealM2:null, bygninger:p.bygninger||[],
+      enheder:p.enheder||null, enhedsliste:p.enhedsliste||null,
       ejl:ejl, ejerforening:p.ejerforening||null };
   }
   var lkTimer=null;
@@ -773,17 +1173,29 @@
     fetch(PROXY_URL+"/ejendom?adresse="+encodeURIComponent(adresse))
       .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
       .then(function(res){
-        if(!res.ok || res.j.error){ toast("Opslag fejlede: "+(res.j.error||"backend skal først opdateres")); return; }
+        if(!res.ok || res.j.error){ toast("Opslag fejlede: "+(res.j.error||"ukendt fejl fra backend")); return; }
         var prop=toProp(res.j);
         REAL[prop.id]=prop;
         openDetail(prop.id);
         toast("Registerdata hentet ✓");
       })
-      .catch(function(){ toast("Opslag fejlede — er backend opdateret?"); });
+      // Et afvist fetch her betyder næsten altid at browseren blokerede kaldet,
+      // ikke at backenden fejler. Sig hvad der reelt sker.
+      .catch(function(){
+        toast(/^https?:\/\/(localhost|127\.0\.0\.1)/.test(location.origin)
+          ? "Blokeret lokalt: backendens CORS tillader kun det live site"
+          : "Kunne ikke nå backenden — tjek din forbindelse");
+      });
   }
 
   document.querySelectorAll(".segbtn button").forEach(function(b){ b.addEventListener("click", function(){ pipeView=b.getAttribute("data-pv"); document.querySelectorAll(".segbtn button").forEach(function(x){x.classList.toggle("active", x===b);}); renderPipeline(); }); });
   initMap(); initFilters(); initAssistant(); lookupInit(); renderDash(); savePipe();
+
+  // Deep link: ?adresse=… åbner ejendommens overblik direkte (bruges af "Se ejendom")
+  try {
+    var qAdr=new URLSearchParams(location.search).get("adresse");
+    if(qAdr) doLookup(qAdr);
+  } catch(e){}
 })();
 </script>
 </body>

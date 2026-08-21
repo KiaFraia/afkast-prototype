@@ -9,6 +9,13 @@
 // Secrets: GROQ_API_KEY, DAF_USER, DAF_PASS
 
 const ALLOWED_ORIGIN = "https://kiafraia.github.io";
+// Lokal udvikling: en side på localhost må også kalde, ellers blokerer browseren
+// alle opslag når man kører index.html fra sin egen maskine.
+const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+function tilladtOrigin(request) {
+  const o = request && request.headers.get("Origin");
+  return o && (o === ALLOWED_ORIGIN || LOCAL_ORIGIN.test(o)) ? o : ALLOWED_ORIGIN;
+}
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL = "llama-3.1-8b-instant";
 const SYS = 'Du er assistent i en dansk ejendomsinvesteringsapp. Oversæt brugerens beskrivelse af ønskede off-market leads til søgefiltre. Svar KUN med JSON på formen {"filters":{"region":"","ownerType":"","minAge":0,"lives":"","minProps":1,"minTenure":0,"maxPrice":0,"type":"","minUnits":1,"minArea":0},"reply":""}. region: Hovedstaden|Midtjylland|Syddanmark|Nordjylland eller tom. ownerType: Privatperson|Selskab eller tom. minAge: ejerens minimumsalder (0=ingen). lives: ja=bor på adressen, nej=fraværende ejer, tom=ligegyldigt. minProps: min antal ejendomme ejeren ejer (1=ingen). minTenure: min ejertid i år (0=ingen). maxPrice: maks seneste handelspris i kroner (0=ingen). type: Enfamiliehus|Flerfamiliehus|Ejerlejlighed eller tom. minUnits: min boligenheder (1=ingen). minArea: min m² (0=ingen). Kriterier der ikke nævnes sættes til 0 eller tom streng. reply: én kort dansk sætning.';
@@ -20,17 +27,20 @@ const EJERFORHOLD = { 10: "Privatpersoner", 20: "Alment boligselskab", 30: "Akti
 const EJENDOMSTYPE = { 1: "Samlet fast ejendom", 2: "Bygning på fremmed grund", 3: "Ejerlejlighed" };
 const AKTIV_STATUS = ["6", "7"]; // 6=Opført, 7=Gældende
 
-function cors() {
+// origin gives eksplicit med hver gang — en modulvariabel ville kunne blive
+// overskrevet af et samtidigt kald og sende den forkerte origin-header retur.
+function cors(origin) {
   return {
-    "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+    "Access-Control-Allow-Origin": origin || ALLOWED_ORIGIN,
+    "Vary": "Origin",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
   };
 }
-function json(obj, status) {
+function json(obj, status, origin) {
   return new Response(JSON.stringify(obj), {
     status: status || 200,
-    headers: { ...cors(), "Content-Type": "application/json" },
+    headers: { ...cors(origin), "Content-Type": "application/json" },
   });
 }
 async function getJson(url) {
@@ -44,6 +54,25 @@ function dafUrl(path, params, env) {
   u.searchParams.set("username", env.DAF_USER);
   u.searchParams.set("password", env.DAF_PASS);
   return u.toString();
+}
+
+// BBR-anvendelseskoder 110-190 er beboelse; alt andet på en enhed regnes som erhverv.
+function erBoligEnhed(e) {
+  const k = Number(e.enh020EnhedensAnvendelse);
+  return k >= 110 && k <= 190;
+}
+function sumFelt(liste, felt) {
+  const tal = liste.map((e) => e[felt]).filter((v) => v != null);
+  return tal.length ? tal.reduce((a, b) => a + b, 0) : null;
+}
+function opgørEnheder(liste) {
+  if (!liste || !liste.length) return null;
+  return {
+    bolig: liste.filter(erBoligEnhed).length,
+    erhverv: liste.filter((e) => !erBoligEnhed(e)).length,
+    boligArealM2: sumFelt(liste, "enh027ArealTilBeboelse"),
+    erhvervArealM2: sumFelt(liste, "enh028ArealTilErhverv"),
+  };
 }
 
 async function jordstykkeInfo(js) {
@@ -86,6 +115,8 @@ async function buildUnitProfile(a, env) {
     ejerforhold: EJERFORHOLD[rel.ejendommensEjerforholdskode] || rel.ejendommensEjerforholdskode || null,
     bygninger: [],
     boligarealIAltM2: enh.enh026EnhedensSamledeAreal ?? null,
+    // Lejligheden er én enhed — arealopdelingen står på enheden vi allerede har hentet
+    enheder: opgørEnheder([enh]),
     ejerlejlighed: {
       nummer: matEjl?.ejerlejlighedsnummer ?? rel.ejerlejlighedsnummer ?? null,
       enhedArealM2: enh.enh026EnhedensSamledeAreal ?? null,
@@ -128,8 +159,23 @@ async function buildProfile(query, env) {
     getJson(dafUrl("Matriklen2/Matrikel/2.0.0/rest/SamletFastEjendom", { SFEBFEnr: bfe }, env)).catch(() => null),
   ]);
 
-  const aktive = (bygninger || [])
-    .filter((b) => AKTIV_STATUS.includes(b.status))
+  const aktiveBygninger = (bygninger || []).filter((b) => AKTIV_STATUS.includes(b.status));
+
+  // Enheder pr. bygning -> antal og areal fordelt på bolig og erhverv.
+  // Parameternavnet Bygning og felterne enh027/enh028 er fra Datafordelerens BBR-dokumentation.
+  const enhedsSvar = await Promise.all(
+    aktiveBygninger.map((b) =>
+      b.id_lokalId
+        ? getJson(dafUrl("BBR/BBRPublic/1/rest/enhed", { Bygning: b.id_lokalId }, env)).catch(() => null)
+        : Promise.resolve(null)
+    )
+  );
+  const alleEnheder = enhedsSvar
+    .filter(Boolean)
+    .flat()
+    .filter((e) => e && AKTIV_STATUS.includes(e.status));
+
+  const aktive = aktiveBygninger
     .map((b) => ({
       nr: b.byg007Bygningsnummer,
       anvendelse: ANVENDELSE[b.byg021BygningensAnvendelse] || b.byg021BygningensAnvendelse,
@@ -172,6 +218,17 @@ async function buildProfile(query, env) {
     sfeBekræftet: sfeProps?.BFEnummer === bfe,
     bygninger: aktive,
     boligarealIAltM2: aktive.reduce((s, b) => s + (b.boligarealM2 || 0), 0),
+    enheder: opgørEnheder(alleEnheder),
+    // Én række pr. enhed. adresseId er DAR-adressens uuid, som appen joiner med
+    // DAWA-adresselisten — så vi slipper for et opslag pr. enhed.
+    enhedsliste: alleEnheder.map((e) => ({
+      adresseId: e.adresseIdentificerer ?? null,
+      boligArealM2: e.enh027ArealTilBeboelse ?? null,
+      erhvervArealM2: e.enh028ArealTilErhverv ?? null,
+      samletArealM2: e.enh026EnhedensSamledeAreal ?? null,
+      værelser: e.enh031AntalVærelser ?? null,
+      anvendelse: ANVENDELSE[e.enh020EnhedensAnvendelse] || e.enh020EnhedensAnvendelse || null,
+    })),
     ejerlejlighed: null,
     ejerforening,
     ejer: null, // navne kræver EJF certifikat-adgang
@@ -196,13 +253,14 @@ async function cachedProfile(query, env) {
 }
 
 async function assistant(request, env) {
-  if (!env.GROQ_API_KEY) return json({ error: "server missing GROQ_API_KEY" }, 500);
+  const o = tilladtOrigin(request);
+  if (!env.GROQ_API_KEY) return json({ error: "server missing GROQ_API_KEY" }, 500, o);
   let text = "";
   try {
     const body = await request.json();
     text = ((body && body.text) || "").toString().slice(0, 500);
   } catch (e) {}
-  if (!text.trim()) return json({ filters: {}, reply: "" });
+  if (!text.trim()) return json({ filters: {}, reply: "" }, 200, o);
 
   let groqResp;
   try {
@@ -216,34 +274,35 @@ async function assistant(request, env) {
       }),
     });
   } catch (e) {
-    return json({ error: "upstream fetch failed" }, 502);
+    return json({ error: "upstream fetch failed" }, 502, o);
   }
-  if (!groqResp.ok) return json({ error: (await groqResp.text()).slice(0, 200) }, 502);
+  if (!groqResp.ok) return json({ error: (await groqResp.text()).slice(0, 200) }, 502, o);
   const data = await groqResp.json();
   let out = { filters: {}, reply: "" };
   try {
     out = JSON.parse((((data.choices || [])[0] || {}).message || {}).content || "{}");
   } catch (e) {}
-  return json(out);
+  return json(out, 200, o);
 }
 
 export default {
   async fetch(request, env) {
-    if (request.method === "OPTIONS") return new Response(null, { headers: cors() });
+    const o = tilladtOrigin(request);
+    if (request.method === "OPTIONS") return new Response(null, { headers: cors(o) });
     const url = new URL(request.url);
 
     if (request.method === "GET" && url.pathname === "/ejendom") {
-      if (!env.DAF_USER || !env.DAF_PASS) return json({ error: "server missing DAF_USER/DAF_PASS" }, 500);
+      if (!env.DAF_USER || !env.DAF_PASS) return json({ error: "server missing DAF_USER/DAF_PASS" }, 500, o);
       const adresse = (url.searchParams.get("adresse") || "").slice(0, 200);
-      if (!adresse.trim()) return json({ error: "adresse mangler" }, 400);
+      if (!adresse.trim()) return json({ error: "adresse mangler" }, 400, o);
       try {
-        return json(await cachedProfile(adresse, env));
+        return json(await cachedProfile(adresse, env), 200, o);
       } catch (e) {
-        return json({ error: (e && e.message) || "opslag fejlede" }, 502);
+        return json({ error: (e && e.message) || "opslag fejlede" }, 502, o);
       }
     }
 
     if (request.method === "POST" && url.pathname === "/") return assistant(request, env);
-    return json({ error: "method not allowed" }, 405);
+    return json({ error: "method not allowed" }, 405, o);
   },
 };
