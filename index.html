@@ -826,24 +826,45 @@
 
       var oensket=$("f-ownertype").value, minTid=+$("f-tenure").value,
           oensketType=$("f-type").value, minAreal=+$("f-area").value, maxAar=+$("f-year").value;
-      var traef=[];
+      // En ejendom udelades kun naar data modsiger et filter. Mangler data,
+      // vises den med en note — ellers ville et enkelt utilgaengeligt register
+      // tomme hele listen, som det skete da matriklen.dk spaerrede os.
+      var traef=[], uvurderet=0;
       medBfe.forEach(function(l){
-        var pr=l.feature.properties, e=ejere[pr.bfenummer];
-        if(!e) return;
-        if(oensket && (oensket==="Privatperson")!==erPrivat(e)) return;
-        var aar=e.overtagelsesdato? +e.overtagelsesdato.slice(0,4) : null;
-        if(minTid>0 && (!aar || (YEAR-aar)<minTid)) return;
+        var pr=l.feature.properties, e=ejere[pr.bfenummer]||null;
         var bbr=bbrCache[pr.featureid]||null;
-        if(oensketType && (!bbr || bbr.kategori!==oensketType)) return;
-        if(minAreal>0 && (!bbr || !(bbr.boligArealM2>=minAreal))) return;
-        if(maxAar<2025 && (!bbr || !(bbr.opført && bbr.opført<=maxAar))) return;
+        var aar=(e&&e.overtagelsesdato)? +e.overtagelsesdato.slice(0,4) : null;
+        var mangler=[];
+
+        if(oensket){
+          if(!e) mangler.push("ejerforhold");
+          else if((oensket==="Privatperson")!==erPrivat(e)) return;
+        }
+        if(minTid>0){
+          if(!aar) mangler.push("ejertid");
+          else if((YEAR-aar)<minTid) return;
+        }
+        if(oensketType){
+          if(!bbr||!bbr.kategori) mangler.push("ejendomstype");
+          else if(bbr.kategori!==oensketType) return;
+        }
+        if(minAreal>0){
+          if(!bbr||bbr.boligArealM2==null) mangler.push("areal");
+          else if(bbr.boligArealM2<minAreal) return;
+        }
+        if(maxAar<2025){
+          if(!bbr||!bbr.opført) mangler.push("opførelsesår");
+          else if(bbr.opført>maxAar) return;
+        }
+        if(mangler.length) uvurderet++;
+
         var a=adr[pr.ejerlavkode+"/"+pr.matrikelnr];
-        traef.push({pr:pr, e:e, bbr:bbr, adresse:(a&&a.betegnelse)||null, enheder:(a&&a.antal)||0, aar:aar, lag:l});
+        traef.push({pr:pr, e:e, bbr:bbr, mangler:mangler, adresse:(a&&a.betegnelse)||null, enheder:(a&&a.antal)||0, aar:aar, lag:l});
       });
       traef.sort(function(x,y){ return (x.aar||9999)-(y.aar||9999); });
       sidsteTraef=traef; visGraense=VIS_ANTAL;
       // Skeln mellem "ingen matchede filtrene" og "vi fik slet ingen ejerdata"
-      sidsteOpslag = {undersoegt: medBfe.length, medEjer: Object.keys(ejere).length};
+      sidsteOpslag = {undersoegt: medBfe.length, medEjer: Object.keys(ejere).length, uvurderet: uvurderet};
       markerTraef(medBfe, traef);
       visTraef();
     });
@@ -864,14 +885,12 @@
 
   function visTraef(){
     var box=$("deal-list");
-    $("deal-count").textContent = sidsteTraef.length+(sidsteTraef.length===1? " ejendom":" ejendomme")+" i kortudsnittet";
+    var uv=(sidsteOpslag&&sidsteOpslag.uvurderet)||0;
+    $("deal-count").textContent = sidsteTraef.length+(sidsteTraef.length===1? " ejendom":" ejendomme")+" i kortudsnittet"+
+      (uv? " · "+uv+" mangler data til at kunne vurderes" : "");
     if(!sidsteTraef.length){
       var o=sidsteOpslag||{};
-      box.innerHTML = beskedKort(
-        !o.medEjer
-          ? "Kunne ikke hente ejerforhold for de "+(o.undersoegt||0)+" ejendomme i udsnittet. Prøv igen om et øjeblik."
-          : "Ingen af de "+o.medEjer+" ejendomme med ejerdata matcher filtrene. Prøv at nulstille ejerskabstype eller ejertid."
-      );
+      box.innerHTML = beskedKort("Ingen af de "+(o.undersoegt||0)+" ejendomme i udsnittet matcher filtrene.");
       return;
     }
 
@@ -886,10 +905,11 @@
             (t.bbr&&t.bbr.opført? ' · opført '+t.bbr.opført:'')+
             ' · '+nf.format(t.pr.registreretareal||0)+' m² grund'+
             (t.enheder>1? ' · '+t.enheder+' adresser':'')+'</div>'+
-          '<div class="owner">'+(t.e.navn||"–")+
-            '<span style="color:var(--muted)">'+(t.e.ejerforhold? ' · '+t.e.ejerforhold:'')+(ejertid? ' · '+ejertid:'')+'</span>'+
+          '<div class="owner">'+(t.e? (t.e.navn||"–") : '<span class="pop-dim">Ejer ikke hentet</span>')+
+            (t.e? '<span style="color:var(--muted)">'+(t.e.ejerforhold? ' · '+t.e.ejerforhold:'')+(ejertid? ' · '+ejertid:'')+'</span>' : '')+
           '</div>'+
           '<div class="chips">'+
+            (t.mangler&&t.mangler.length? '<span class="chip hot">Ikke vurderet: '+t.mangler.join(", ")+'</span>' : '')+
             '<span class="chip">Handelspris kræver Tinglysning</span>'+
             '<span class="chip">Vurdering kræver VUR</span>'+
           '</div>'+
