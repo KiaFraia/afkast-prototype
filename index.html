@@ -745,7 +745,11 @@
      plus ét batch-opslag af ejere gennem worker'en. */
   // Worker'en kan hoejst slaa 45 ejere op pr. kald (Cloudflares grænse paa 50
   // udgaaende kald). Vi deler derfor op i bundter og koerer dem parallelt.
-  var SOEG_MAKS = 120, VIS_ANTAL = 50, BUNDT = 25, SAMTIDIGE_BUNDTER = 2;
+  var SOEG_MAKS = 120, VIS_ANTAL = 50, SAMTIDIGE_BUNDTER = 2;
+  // BBR-bundter holdes smaa. Det er ikke kaldegraensen der er bindende — 15 par
+  // gav stadig 502 — men worker'ens CPU-loft: BBR-svar er tunge at parse.
+  // Maalt: 10 par giver fulde svar hver gang, 15 fejler med mellemrum.
+  var BUNDT = 30, BUNDT_BBR = 10;
   var visGraense = VIS_ANTAL, sidsteTraef = [], sidsteOpslag = null;
 
   function adresserIUdsnit(c, radius){
@@ -768,7 +772,7 @@
   // kald pr. request ikke rammes, og resultatet caches lokalt.
   function hentBbrIBundter(idListe){
     var bundter=[];
-    for(var i=0;i<idListe.length;i+=BUNDT) bundter.push(idListe.slice(i,i+BUNDT));
+    for(var i=0;i<idListe.length;i+=BUNDT_BBR) bundter.push(idListe.slice(i,i+BUNDT_BBR));
     var samlet={}, n=0;
     function tag(){
       if(n>=bundter.length) return Promise.resolve();
@@ -858,35 +862,38 @@
         var pr=l.feature.properties, e=ejere[pr.bfenummer]||null;
         var bbr=bbrCache[pr.featureid]||null;
         var aar=(e&&e.overtagelsesdato)? +e.overtagelsesdato.slice(0,4) : null;
-        var mangler=[];
+        // Et filter skal filtrere. Kan en ejendom ikke vurderes paa et kriterium
+        // der ER sat, udelades den — men vi taeller hvor mange, saa en tom liste
+        // kan forklares i stedet for bare at se tom ud.
+        var kanIkkeVurderes=false;
 
-        // Ejerforhold kan komme fra to kilder: matriklen.dk (med navn) eller
-        // BBR (kun typen). BBR er den robuste, saa den bruges naar navnet mangler.
+        // Ejerforhold kan komme to steder fra: matriklen.dk (med navn) eller BBR
+        // (kun typen). BBR er den robuste, saa den bruges naar navnet mangler.
         var forhold = (e && e.ejerforhold) || (bbr && bbr.ejerforhold) || null;
         if(oensket){
-          if(!forhold) mangler.push("ejerforhold");
+          if(!forhold) kanIkkeVurderes=true;
           else if((oensket==="Privatperson") !== /privatperson/i.test(forhold)) return;
         }
         if(minTid>0){
-          if(!aar) mangler.push("ejertid");
+          if(!aar) kanIkkeVurderes=true;
           else if((YEAR-aar)<minTid) return;
         }
         if(oensketType){
-          if(!bbr||!bbr.kategori) mangler.push("ejendomstype");
+          if(!bbr||!bbr.kategori) kanIkkeVurderes=true;
           else if(bbr.kategori!==oensketType) return;
         }
         if(minAreal>0){
-          if(!bbr||bbr.boligArealM2==null) mangler.push("areal");
+          if(!bbr||bbr.boligArealM2==null) kanIkkeVurderes=true;
           else if(bbr.boligArealM2<minAreal) return;
         }
         if(maxAar<2025){
-          if(!bbr||!bbr.opført) mangler.push("opførelsesår");
+          if(!bbr||!bbr.opført) kanIkkeVurderes=true;
           else if(bbr.opført>maxAar) return;
         }
-        if(mangler.length) uvurderet++;
+        if(kanIkkeVurderes){ uvurderet++; return; }
 
         var a=adr[pr.ejerlavkode+"/"+pr.matrikelnr];
-        traef.push({pr:pr, e:e, bbr:bbr, mangler:mangler, adresse:(a&&a.betegnelse)||null, enheder:(a&&a.antal)||0, aar:aar, lag:l});
+        traef.push({pr:pr, e:e, bbr:bbr, adresse:(a&&a.betegnelse)||null, enheder:(a&&a.antal)||0, aar:aar, lag:l});
       });
       // Sorteret paa adresse, saa raekkefoelgen ligger fast uanset hvilke data
       // der naar frem hvornaar. Ejertid ville flytte rundt paa listen undervejs.
@@ -917,11 +924,13 @@
   function visTraef(){
     var box=$("deal-list");
     var uv=(sidsteOpslag&&sidsteOpslag.uvurderet)||0;
-    $("deal-count").textContent = sidsteTraef.length+(sidsteTraef.length===1? " ejendom":" ejendomme")+" i kortudsnittet"+
-      (uv? " · "+uv+" mangler data til at kunne vurderes" : "");
+    $("deal-count").textContent = sidsteTraef.length+(sidsteTraef.length===1? " ejendom matcher":" ejendomme matcher")+
+      (uv? " · "+uv+" udeladt, mangler data" : "");
     if(!sidsteTraef.length){
       var o=sidsteOpslag||{};
-      box.innerHTML = beskedKort("Ingen af de "+(o.undersoegt||0)+" ejendomme i udsnittet matcher filtrene.");
+      box.innerHTML = beskedKort(o.uvurderet
+        ? "Ingen match. "+o.uvurderet+" af "+(o.undersoegt||0)+" ejendomme mangler data til at kunne vurderes."
+        : "Ingen af de "+(o.undersoegt||0)+" ejendomme i udsnittet matcher filtrene.");
       return;
     }
 
