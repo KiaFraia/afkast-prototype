@@ -968,13 +968,24 @@
 
 
     /* ---- BBR: bygninger og enheder ---- */
+    // Materialer, etager og varme kommer fra BBR og fortæller noget om
+    // vedligeholdelsesbehovet — fibercement med asbest og gamle varmeformer
+    // er reelle omkostningssignaler for en køber.
+    var harDetaljer = (d.bygninger||[]).some(function(b){ return b.ydervæg||b.tag||b.varme||b.etager!=null; });
     var bygRaekker = (d.bygninger||[]).map(function(b){
+      var supl = b.supplVarme && b.supplVarme!=="Ikke oplyst" && b.supplVarme!=="Ingen"
+        ? ' <span class="pop-dim">+ '+b.supplVarme+'</span>' : '';
       return '<tr>'+
         '<td class="adr">'+(b.anvendelse||"–")+(b.nr!=null? ' <span class="pop-dim">nr. '+b.nr+'</span>' : '')+'</td>'+
         '<td class="num">'+(b.opført||"–")+'</td>'+
         '<td class="num">'+(b.bebyggetArealM2!=null? nf.format(b.bebyggetArealM2)+" m²":"–")+'</td>'+
         '<td class="num">'+(b.samletBygningsarealM2!=null? nf.format(b.samletBygningsarealM2)+" m²":"–")+'</td>'+
-        '<td class="num">'+(b.boligarealM2!=null? nf.format(b.boligarealM2)+" m²":"–")+'</td>'+
+        (harDetaljer
+          ? '<td class="num">'+(b.etager!=null? b.etager:"–")+'</td>'+
+            '<td class="adr">'+(b.ydervæg||"–")+'</td>'+
+            '<td class="adr">'+(b.tag||"–")+'</td>'+
+            '<td class="adr">'+(b.varme||"–")+supl+'</td>'
+          : '<td class="num">'+(b.boligarealM2!=null? nf.format(b.boligarealM2)+" m²":"–")+'</td>')+
       '</tr>';
     }).join("");
 
@@ -993,8 +1004,11 @@
           (bygRaekker
             ? '<div class="ef-list" style="margin:0; border:none; border-radius:0;">'+
                 '<table class="etab"><thead><tr>'+
-                  '<th>Anvendelse</th><th class="num">Opført</th><th class="num">Bebygget areal</th>'+
-                  '<th class="num">Samlet bygningsareal</th><th class="num">Boligareal</th>'+
+                  '<th>Anvendelse</th><th class="num">Opført</th><th class="num">Bebygget</th>'+
+                  '<th class="num">Samlet</th>'+
+                  (harDetaljer
+                    ? '<th class="num">Etager</th><th>Ydervæg</th><th>Tag</th><th>Varme</th>'
+                    : '<th class="num">Boligareal</th>')+
                 '</tr></thead><tbody>'+bygRaekker+'</tbody></table>'+
               '</div>'
             : '')+

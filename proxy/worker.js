@@ -31,6 +31,10 @@ const DAF = "https://services.datafordeler.dk";
 const ANVENDELSE = { 110: "Stuehus til landbrug", 120: "Fritliggende enfamilieshus", 121: "Sammenbygget enfamiliehus", 130: "Række-/kædehus", 131: "Række-/kædehus", 132: "Dobbelthus", 140: "Etagebolig", 190: "Anden helårsbeboelse", 320: "Erhverv (kontor/handel)", 321: "Kontor", 322: "Detailhandel", 330: "Restaurant/hotel", 910: "Garage", 920: "Carport", 930: "Udhus" };
 const EJERFORHOLD = { 10: "Privatpersoner", 20: "Alment boligselskab", 30: "Aktie-/anpartsselskab", 40: "Forening/legat/selvejende institution", 41: "Privat andelsboligforening", 50: "Staten", 60: "Region", 70: "Kommune", 80: "Andet", 90: "Ikke fastlagt", 99: "Ukendt" };
 const EJENDOMSTYPE = { 1: "Samlet fast ejendom", 2: "Bygning på fremmed grund", 3: "Ejerlejlighed" };
+const YDERVAEG = { 1: "Mursten", 2: "Letbetonsten", 3: "Fibercement herunder asbest", 4: "Bindingsværk", 5: "Træ", 6: "Betonelementer", 8: "Metal", 10: "Fibercement uden asbest", 11: "Plastmaterialer", 12: "Glas", 80: "Ingen", 90: "Andet materiale" };
+const TAGDAEKNING = { 1: "Tagpap med lille hældning", 2: "Tagpap med stor hældning", 3: "Fibercement herunder asbest", 4: "Betontagsten", 5: "Tegl", 6: "Metal", 7: "Stråtag", 10: "Fibercement uden asbest", 11: "Plastmaterialer", 12: "Glas", 20: "Levende tage", 80: "Ingen", 90: "Andet materiale" };
+const VARME = { 1: "Fjernvarme/blokvarme", 2: "Centralvarme med én fyringsenhed", 3: "Ovn til fast og flydende brændsel", 5: "Varmepumpe", 6: "Centralvarme med to fyringsenheder", 7: "Elvarme", 8: "Gasradiator", 9: "Ingen varmeinstallation", 99: "Registreret på enheder" };
+const SUPPLVARME = { 0: "Ikke oplyst", 1: "Varmepumpe", 2: "Brændeovn med skorsten", 3: "Biopejs uden skorsten", 4: "Solvarmeanlæg", 5: "Pejs", 6: "Gasradiator", 7: "Elvarme", 10: "Biogasanlæg", 80: "Andet", 90: "Ingen" };
 const AKTIV_STATUS = ["6", "7"]; // 6=Opført, 7=Gældende
 const EJERE_MAKS = 80; // loft pr. batch-kald, så et vidt kortudsnit ikke vælter backenden
 
@@ -273,6 +277,11 @@ async function buildProfile(query, env) {
       boligarealM2: b.byg039BygningensSamledeBoligAreal ?? null,
       kælderM2: (b.etageList || []).find((e) => e.etage?.eta006BygningensEtagebetegnelse === "kl")?.etage?.eta020SamletArealAfEtage ?? null,
       tagetageM2: (b.etageList || []).map((e) => e.etage?.eta021ArealAfUdnyttetDelAfTagetage).find((v) => v != null) ?? null,
+      etager: b.byg054AntalEtager ?? null,
+      ydervæg: YDERVAEG[b.byg032YdervæggensMateriale] || null,
+      tag: TAGDAEKNING[b.byg033Tagdækningsmateriale] || null,
+      varme: VARME[b.byg056Varmeinstallation] || null,
+      supplVarme: SUPPLVARME[b.byg058SupplerendeVarme] || null,
     }))
     .sort((x, y) => (x.nr ?? 99) - (y.nr ?? 99));
 
