@@ -507,9 +507,28 @@
     return navne.length? navne[0] : null;
   }
 
-  function ejendomsInfo(adr, prof){
+  // Ejer og BBR er allerede hentet til soegningen — vis dem her i stedet for at
+  // slaa op igen. Popup'en er stedet detaljerne bor, saa listen kan ligge stille.
+  function fraSoegning(p){
+    var ud="";
+    var e = p && ejerCache[p.bfenummer];
+    if(e && e.navn){
+      var aar = e.overtagelsesdato? +e.overtagelsesdato.slice(0,4) : null;
+      ud += '<br><b>'+e.navn+'</b>'+
+        '<span class="pop-dim">'+(e.ejerforhold? ' · '+e.ejerforhold : '')+
+        (aar? ' · '+(YEAR-aar)+' års ejertid' : '')+'</span>';
+    }
+    var b = p && bbrCache[p.featureid];
+    if(b){
+      ud += '<br>'+[b.kategori, b.boligArealM2? nf.format(b.boligArealM2)+" m² bolig":null,
+                    b.opført? "opført "+b.opført:null].filter(Boolean).join(" · ");
+    }
+    return ud;
+  }
+
+  function ejendomsInfo(adr, prof, jsProps){
     var f=adr[0];
-    var h='<b>'+f.vejnavn+' '+f.husnr+'</b><br>'+f.postnr+' '+f.postnrnavn;
+    var h='<b>'+f.vejnavn+' '+f.husnr+'</b><br>'+f.postnr+' '+f.postnrnavn+fraSoegning(jsProps);
     var typer=[];
     if(prof){
       if(prof.ejerforening && prof.ejerforening.antalEjerlejligheder)
@@ -548,12 +567,12 @@
           var t='<span class="pop-dim">Ingen adresser på matriklen — fx vej- eller fællesareal.</span>';
           jsCache[key]=t; layer.setPopupContent(matrikelPopup(p,t)); return;
         }
-        layer.setPopupContent(matrikelPopup(p, ejendomsInfo(adr,null)+'<br><span class="pop-dim">Henter BBR…</span>'));
+        layer.setPopupContent(matrikelPopup(p, ejendomsInfo(adr,null,p)+'<br><span class="pop-dim">Henter BBR…</span>'));
         return fetch(PROXY_URL+'/ejendom?adresse='+encodeURIComponent(adr[0].betegnelse))
           .then(function(r){ return r.ok? r.json() : null; })
           .catch(function(){ return null; })
           .then(function(prof){
-            var html=ejendomsInfo(adr, (prof && !prof.error) ? prof : null);
+            var html=ejendomsInfo(adr, (prof && !prof.error) ? prof : null, p);
             jsCache[key]=html; layer.setPopupContent(matrikelPopup(p, html));
           });
       })
@@ -861,7 +880,11 @@
         var a=adr[pr.ejerlavkode+"/"+pr.matrikelnr];
         traef.push({pr:pr, e:e, bbr:bbr, mangler:mangler, adresse:(a&&a.betegnelse)||null, enheder:(a&&a.antal)||0, aar:aar, lag:l});
       });
-      traef.sort(function(x,y){ return (x.aar||9999)-(y.aar||9999); });
+      // Sorteret paa adresse, saa raekkefoelgen ligger fast uanset hvilke data
+      // der naar frem hvornaar. Ejertid ville flytte rundt paa listen undervejs.
+      traef.sort(function(x,y){
+        return (x.adresse||("Matr. "+x.pr.matrikelnr)).localeCompare(y.adresse||("Matr. "+y.pr.matrikelnr), "da");
+      });
       sidsteTraef=traef; visGraense=VIS_ANTAL;
       // Skeln mellem "ingen matchede filtrene" og "vi fik slet ingen ejerdata"
       sidsteOpslag = {undersoegt: medBfe.length, medEjer: Object.keys(ejere).length, uvurderet: uvurderet};
@@ -895,24 +918,11 @@
     }
 
     box.innerHTML = sidsteTraef.slice(0, visGraense).map(function(t){
-      var ejertid = t.aar? (YEAR-t.aar)+" års ejertid · overtaget "+t.aar : null;
       return '<div class="card deal" data-bfe="'+t.pr.bfenummer+'">'+
         '<div class="main">'+
           '<div class="addr">'+(t.adresse || ("Matr.nr. "+t.pr.matrikelnr+" "+t.pr.ejerlavnavn))+'</div>'+
-          '<div class="meta">'+(t.pr.kommunenavn||"")+
-            (t.bbr&&t.bbr.kategori? ' · '+t.bbr.kategori:'')+
-            (t.bbr&&t.bbr.boligArealM2? ' · '+nf.format(t.bbr.boligArealM2)+' m² bolig':'')+
-            (t.bbr&&t.bbr.opført? ' · opført '+t.bbr.opført:'')+
-            ' · '+nf.format(t.pr.registreretareal||0)+' m² grund'+
-            (t.enheder>1? ' · '+t.enheder+' adresser':'')+'</div>'+
-          '<div class="owner">'+(t.e? (t.e.navn||"–") : '<span class="pop-dim">Ejer ikke hentet</span>')+
-            (t.e? '<span style="color:var(--muted)">'+(t.e.ejerforhold? ' · '+t.e.ejerforhold:'')+(ejertid? ' · '+ejertid:'')+'</span>' : '')+
-          '</div>'+
-          '<div class="chips">'+
-            (t.mangler&&t.mangler.length? '<span class="chip hot">Ikke vurderet: '+t.mangler.join(", ")+'</span>' : '')+
-            '<span class="chip">Handelspris kræver Tinglysning</span>'+
-            '<span class="chip">Vurdering kræver VUR</span>'+
-          '</div>'+
+          '<div class="meta">'+(t.pr.kommunenavn||"")+' · '+nf.format(t.pr.registreretareal||0)+' m² grund'+
+            (t.enheder>1? ' · '+t.enheder+' adresser':'')+' · klik for detaljer</div>'+
         '</div>'+
         '<div class="acts">'+
           '<button class="btn ghost sm" data-kort="'+t.pr.bfenummer+'">Vis på kort</button>'+
