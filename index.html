@@ -862,19 +862,34 @@
     }
 
     var c=map.getCenter(), radius=Math.min(Math.round(c.distanceTo(map.getBounds().getNorthEast())), 1200);
-    box.innerHTML=beskedKort("Slår "+medBfe.length+" ejendomme op…");
     var bfeListe=Array.from(new Set(medBfe.map(function(l){ return l.feature.properties.bfenummer; })));
+
+    var oensket=$("f-ownertype").value, minTid=+$("f-tenure").value,
+        oensketType=$("f-type").value, minAreal=+$("f-area").value, maxAar=+$("f-year").value;
+
+    // Registrene slaas kun op naar et filter faktisk kraever dem. Uden filtre
+    // koster det at flytte kortet ingen registeropslag: man ser hvor ejendommene
+    // ligger, og henter resten ved at klikke paa en enkelt. Med 120 ejendomme i
+    // udsnittet er forskellen 18 kald mod 1.
+    var brugEjer = minTid>0;                       // ejertid findes kun i matriklen
+    var brugBbr  = !!(oensketType || minAreal>0 || maxAar<2025 || oensket);
+    var harFiltre = brugEjer || brugBbr;
 
     // Hent kun de ejere vi ikke har i forvejen. Uden det ville hvert filterskift
     // slaa alle ejendomme op igen — spild, og kaldene begynder at fejle.
-    var mangler = bfeListe.filter(function(b){ return ejerCache[b]===undefined; });
+    var mangler = brugEjer
+      ? bfeListe.filter(function(b){ return ejerCache[b]===undefined; }) : [];
     var jsPar = {};
     medBfe.forEach(function(l){
       var q=l.feature.properties;
       if(q.featureid) jsPar[q.featureid]=q.bfenummer||"";
     });
-    var manglerBbr = Object.keys(jsPar).filter(function(i){ return bbrCache[i]===undefined; })
-                           .map(function(i){ return i+":"+jsPar[i]; });
+    var manglerBbr = brugBbr
+      ? Object.keys(jsPar).filter(function(i){ return bbrCache[i]===undefined; })
+              .map(function(i){ return i+":"+jsPar[i]; }) : [];
+
+    box.innerHTML = beskedKort((mangler.length||manglerBbr.length)
+      ? "Slår "+medBfe.length+" ejendomme op…" : "Henter adresser…");
 
     Promise.all([
       adresserIUdsnit(c, radius),
@@ -889,11 +904,6 @@
       var ejere={};
       bfeListe.forEach(function(b){ if(ejerCache[b]) ejere[b]=ejerCache[b]; });
 
-      var oensket=$("f-ownertype").value, minTid=+$("f-tenure").value,
-          oensketType=$("f-type").value, minAreal=+$("f-area").value, maxAar=+$("f-year").value;
-      // En ejendom udelades kun naar data modsiger et filter. Mangler data,
-      // vises den med en note — ellers ville et enkelt utilgaengeligt register
-      // tomme hele listen, som det skete da matriklen.dk spaerrede os.
       var traef=[], uvurderet=0;
       medBfe.forEach(function(l){
         var pr=l.feature.properties, e=ejere[pr.bfenummer]||null;
@@ -915,17 +925,21 @@
           if(!aar) kanIkkeVurderes=true;
           else if((YEAR-aar)<minTid) return;
         }
+        // Worker'en svarer kun null naar opslaget slog fejl eller jordstykket
+        // hverken har bygninger eller ejendomsrelation. Er der et svar, ved vi
+        // besked: en butik uden boligareal er et nej til arealfilteret, ikke en
+        // manglende oplysning. Kun null er reelt uvist.
         if(oensketType){
-          if(!bbr||!bbr.kategori) kanIkkeVurderes=true;
+          if(!bbr) kanIkkeVurderes=true;
           else if(bbr.kategori!==oensketType) return;
         }
         if(minAreal>0){
-          if(!bbr||bbr.boligArealM2==null) kanIkkeVurderes=true;
-          else if(bbr.boligArealM2<minAreal) return;
+          if(!bbr) kanIkkeVurderes=true;
+          else if((bbr.boligArealM2||0)<minAreal) return;
         }
         if(maxAar<2025){
-          if(!bbr||!bbr.opført) kanIkkeVurderes=true;
-          else if(bbr.opført>maxAar) return;
+          if(!bbr) kanIkkeVurderes=true;
+          else if(!bbr.opført || bbr.opført>maxAar) return;
         }
         if(kanIkkeVurderes){ uvurderet++; return; }
 
@@ -939,15 +953,18 @@
       });
       sidsteTraef=traef; visGraense=VIS_ANTAL;
       // Skeln mellem "ingen matchede filtrene" og "vi fik slet ingen ejerdata"
-      sidsteOpslag = {undersoegt: medBfe.length, medEjer: Object.keys(ejere).length, uvurderet: uvurderet};
-      markerTraef(medBfe, traef);
+      sidsteOpslag = {undersoegt: medBfe.length, medEjer: Object.keys(ejere).length,
+                      uvurderet: uvurderet, harFiltre: harFiltre};
+      markerTraef(medBfe, traef, harFiltre);
       visTraef();
     });
   }
 
-  function markerTraef(alle, traef){
+  function markerTraef(alle, traef, harFiltre){
     var ramt={};
-    traef.forEach(function(t){ ramt[t.pr.bfenummer]=1; });
+    // Uden filtre er alt et "traef". At farve hele udsnittet blaat siger intet,
+    // saa den blaa markering gemmes til de gange der faktisk er filtreret.
+    if(harFiltre) traef.forEach(function(t){ ramt[t.pr.bfenummer]=1; });
     alle.forEach(function(l){
       if(ramt[l.feature.properties.bfenummer]){
         l.setStyle({color:"#1763d1", weight:2.5, opacity:1, fillColor:"#1763d1", fillOpacity:.30});
@@ -961,8 +978,10 @@
   function visTraef(){
     var box=$("deal-list");
     var uv=(sidsteOpslag&&sidsteOpslag.uvurderet)||0;
-    $("deal-count").textContent = sidsteTraef.length+(sidsteTraef.length===1? " ejendom matcher":" ejendomme matcher")+
-      (uv? " · "+uv+" udeladt, mangler data" : "");
+    var n=sidsteTraef.length;
+    $("deal-count").textContent = (sidsteOpslag&&sidsteOpslag.harFiltre)
+      ? n+(n===1? " ejendom matcher":" ejendomme matcher")+(uv? " · "+uv+" udeladt, mangler data":"")
+      : n+(n===1? " ejendom i udsnittet":" ejendomme i udsnittet");
     if(!sidsteTraef.length){
       var o=sidsteOpslag||{};
       box.innerHTML = beskedKort(o.uvurderet
@@ -985,7 +1004,9 @@
                 (t.aar? ' · '+(YEAR-t.aar)+' års ejertid · overtaget '+t.aar : '')+'</span>'
               : (t.bbr&&t.bbr.ejerforhold
                   ? t.bbr.ejerforhold+'<span class="pop-dim"> · ejernavn kræver EJF-adgang</span>'
-                  : '<span class="pop-dim">Ejerforhold ikke hentet</span>'))+
+                  : '<span class="pop-dim">'+((sidsteOpslag&&sidsteOpslag.harFiltre)
+                      ? 'Ejerforhold ikke hentet'
+                      : 'Tryk «Se ejendom» for BBR og ejerforhold')+'</span>'))+
           '</div>'+
         '</div>'+
         '<div class="acts">'+
