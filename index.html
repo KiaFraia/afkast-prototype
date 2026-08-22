@@ -516,6 +516,9 @@
 
   // Popup'en viser kun ejendommen — matrikelnummer, ejerlav, grundareal og BFE
   // står allerede på ejendomssiden, og fyldte popup'en unødigt op.
+  // 2026-07-01 -> 01.07.2026, samme skrivemaade som paa detaljesiden
+  function dkDato(d){ return d? String(d).slice(0,10).split("-").reverse().join(".") : null; }
+
   function matrikelPopup(p, krop){
     return krop || '<span class="pop-dim">Henter ejendomsdata…</span>';
   }
@@ -529,16 +532,22 @@
     return navne.length? navne[0] : null;
   }
 
-  // Ejer og BBR er allerede hentet til soegningen — vis dem her i stedet for at
-  // slaa op igen. Popup'en er stedet detaljerne bor, saa listen kan ligge stille.
+  // Ejeren kommer fra det direkte matriklen.dk-opslag, som kun sker naar man
+  // aabner en popup — ét jordstykke ad gangen, aldrig for hele udsnittet.
   function fraSoegning(p){
     var ud="";
-    var e = p && ejerCache[p.bfenummer];
-    if(e && e.navn){
-      var aar = e.overtagelsesdato? +e.overtagelsesdato.slice(0,4) : null;
-      ud += '<br><b>'+e.navn+'</b>'+
-        '<span class="pop-dim">'+(e.ejerforhold? ' · '+e.ejerforhold : '')+
+    var e = p && ejerDirekteCache[p.bfenummer];
+    if(e && e.liste && e.liste.length){
+      var navne = e.liste.map(function(x){ return x.navn; }).filter(Boolean).join(", ");
+      var d = dkDato(e.liste[0].overtagelsesdato);
+      var aar = e.liste[0].overtagelsesdato? +String(e.liste[0].overtagelsesdato).slice(0,4) : null;
+      ud += '<br><b>'+navne+'</b>' +
+        '<span class="pop-dim">'+(d? ' · overtaget '+d : '')+
         (aar? ' · '+(YEAR-aar)+' års ejertid' : '')+'</span>';
+    } else if(e && e.note){
+      ud += '<br><span class="pop-dim">'+e.note+'</span>';
+    } else if(p && p.bfenummer && e===undefined){
+      ud += '<br><span class="pop-dim">Henter ejer…</span>';
     }
     var b = p && bbrCache[p.featureid];
     if(b){
@@ -590,10 +599,15 @@
           jsCache[key]=t; layer.setPopupContent(matrikelPopup(p,t)); return;
         }
         layer.setPopupContent(matrikelPopup(p, ejendomsInfo(adr,null,p)+'<br><span class="pop-dim">Henter BBR…</span>'));
-        return fetch(PROXY_URL+'/ejendom?adresse='+encodeURIComponent(adr[0].betegnelse))
-          .then(function(r){ return r.ok? r.json() : null; })
-          .catch(function(){ return null; })
-          .then(function(prof){
+        // Ejeren hentes paa jordstykkets eget BFE. Er matriklen delt op i
+        // ejerlejligheder, svarer matriklen.dk med en note frem for et navn.
+        return Promise.all([
+          fetch(PROXY_URL+'/ejendom?adresse='+encodeURIComponent(adr[0].betegnelse))
+            .then(function(r){ return r.ok? r.json() : null; })
+            .catch(function(){ return null; }),
+          hentEjerCached(p.bfenummer)
+        ]).then(function(svar){
+            var prof=svar[0];
             var html=ejendomsInfo(adr, (prof && !prof.error) ? prof : null, p);
             jsCache[key]=html; layer.setPopupContent(matrikelPopup(p, html));
           });
@@ -638,7 +652,18 @@
   /* ---- Farv matrikler efter ejerskabsfilteret ----
      Ejerforhold findes kun pr. BFE-nummer, så det hentes samlet gennem worker'en.
      Ved brede kortudsnit er der for mange matrikler til at det giver mening. */
-  var ejerCache = {}, bbrCache = {};
+  var bbrCache = {};
+  // Ejere hentet direkte fra browseren, ét jordstykke ad gangen. Undefined
+  // betyder "ikke slaaet op endnu", null betyder "slaaet op, intet svar".
+  var ejerDirekteCache = {};
+  function hentEjerCached(bfe){
+    if(!bfe) return Promise.resolve(null);
+    if(ejerDirekteCache[bfe]!==undefined) return Promise.resolve(ejerDirekteCache[bfe]);
+    return hentEjerDirekte(bfe).then(function(e){
+      ejerDirekteCache[bfe] = e || null;
+      return ejerDirekteCache[bfe];
+    });
+  }
 
   function erPrivat(e){ return !!e && /privatperson/i.test(e.ejerforhold||""); }
 
@@ -823,10 +848,9 @@
 
 
   /* ---- Søg rigtige ejendomme i kortudsnittet ----
-     Tre kald uanset antal matrikler: jordstykker og adgangsadresser fra DAWA,
-     plus ét batch-opslag af ejere gennem worker'en. */
-  // Worker'en kan hoejst slaa 45 ejere op pr. kald (Cloudflares grænse paa 50
-  // udgaaende kald). Vi deler derfor op i bundter og koerer dem parallelt.
+     Jordstykker og adgangsadresser fra DAWA, og kun naar et filter kraever det,
+     BBR gennem worker'en. Ejernavne slaas ikke op her — de hentes ét ad gangen
+     naar man aabner en matrikel eller en ejendom. */
   var SOEG_MAKS = 120, VIS_ANTAL = 50, SAMTIDIGE_BUNDTER = 2;
   // BBR-bundter holdes smaa. Det er ikke kaldegraensen der er bindende — 15 par
   // gav stadig 502 — men worker'ens CPU-loft: BBR-svar er tunge at parse.
@@ -907,7 +931,7 @@
     var brugBbr  = !!(oensketType || minAreal>0 || maxAar<2025 || oensket);
     var harFiltre = brugBbr;
 
-    // Hent kun de ejere vi ikke har i forvejen. Uden det ville hvert filterskift
+    // Hent kun det BBR vi ikke har i forvejen. Uden det ville hvert filterskift
     // slaa alle ejendomme op igen — spild, og kaldene begynder at fejle.
     var jsPar = {};
     medBfe.forEach(function(l){
@@ -928,22 +952,18 @@
       var adr=svar[0];
       Object.keys(svar[1]).forEach(function(i){ bbrCache[i]=svar[1][i]; });
       manglerBbr.forEach(function(x){ var i=x.split(":")[0]; if(bbrCache[i]===undefined) bbrCache[i]=null; });
-      var ejere={};
-      bfeListe.forEach(function(b){ if(ejerCache[b]) ejere[b]=ejerCache[b]; });
-
       var traef=[], uvurderet=0;
       medBfe.forEach(function(l){
-        var pr=l.feature.properties, e=ejere[pr.bfenummer]||null;
+        var pr=l.feature.properties;
         var bbr=bbrCache[pr.featureid]||null;
-        var aar=(e&&e.overtagelsesdato)? +e.overtagelsesdato.slice(0,4) : null;
         // Et filter skal filtrere. Kan en ejendom ikke vurderes paa et kriterium
         // der ER sat, udelades den — men vi taeller hvor mange, saa en tom liste
         // kan forklares i stedet for bare at se tom ud.
         var kanIkkeVurderes=false;
 
-        // Ejerforhold kan komme to steder fra: matriklen.dk (med navn) eller BBR
-        // (kun typen). BBR er den robuste, saa den bruges naar navnet mangler.
-        var forhold = (e && e.ejerforhold) || (bbr && bbr.ejerforhold) || null;
+        // Ejerforholdet kommer fra BBR's ejendomsrelation. Ejerens navn kraever
+        // matriklen.dk, som kun slaas op paa den enkelte ejendom.
+        var forhold = (bbr && bbr.ejerforhold) || null;
         if(oensket){
           if(!forhold) kanIkkeVurderes=true;
           else if((oensket==="Privatperson") !== /privatperson/i.test(forhold)) return;
@@ -967,7 +987,7 @@
         if(kanIkkeVurderes){ uvurderet++; return; }
 
         var a=adr[pr.ejerlavkode+"/"+pr.matrikelnr];
-        traef.push({pr:pr, e:e, bbr:bbr, adresse:(a&&a.betegnelse)||null, enheder:(a&&a.antal)||0, aar:aar, lag:l});
+        traef.push({pr:pr, bbr:bbr, adresse:(a&&a.betegnelse)||null, enheder:(a&&a.antal)||0, lag:l});
       });
       // Sorteret paa adresse, saa raekkefoelgen ligger fast uanset hvilke data
       // der naar frem hvornaar. Ejertid ville flytte rundt paa listen undervejs.
@@ -976,8 +996,7 @@
       });
       sidsteTraef=traef; visGraense=VIS_ANTAL;
       // Skeln mellem "ingen matchede filtrene" og "vi fik slet ingen ejerdata"
-      sidsteOpslag = {undersoegt: medBfe.length, medEjer: Object.keys(ejere).length,
-                      uvurderet: uvurderet, harFiltre: harFiltre};
+      sidsteOpslag = {undersoegt: medBfe.length, uvurderet: uvurderet, harFiltre: harFiltre};
       markerTraef(medBfe, traef, harFiltre);
       visTraef();
     });
@@ -1022,14 +1041,11 @@
             (t.bbr&&t.bbr.kategori? ' · '+t.bbr.kategori:'')+
             (t.bbr&&t.bbr.boligArealM2? ' · '+nf.format(t.bbr.boligArealM2)+' m² bolig':'')+'</div>'+
           '<div class="owner">'+
-            (t.e&&t.e.navn
-              ? t.e.navn+'<span style="color:var(--muted)">'+(t.e.ejerforhold? ' · '+t.e.ejerforhold:'')+
-                (t.aar? ' · '+(YEAR-t.aar)+' års ejertid · overtaget '+t.aar : '')+'</span>'
-              : (t.bbr&&t.bbr.ejerforhold
-                  ? t.bbr.ejerforhold+'<span class="pop-dim"> · ejernavn kræver EJF-adgang</span>'
-                  : '<span class="pop-dim">'+((sidsteOpslag&&sidsteOpslag.harFiltre)
-                      ? 'Ejerforhold ikke hentet'
-                      : 'Tryk «Se ejendom» for BBR og ejerforhold')+'</span>'))+
+            (t.bbr&&t.bbr.ejerforhold
+              ? t.bbr.ejerforhold+'<span class="pop-dim"> · tryk på matriklen for ejernavn</span>'
+              : '<span class="pop-dim">'+((sidsteOpslag&&sidsteOpslag.harFiltre)
+                  ? 'Ejerforhold ikke hentet'
+                  : 'Tryk «Se ejendom» for BBR og ejerforhold')+'</span>')+
           '</div>'+
         '</div>'+
         '<div class="acts">'+
