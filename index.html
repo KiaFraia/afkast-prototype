@@ -103,6 +103,10 @@
   .asst-actions{display:flex; align-items:center; gap:10px; margin-top:12px;}
   .asst-src{font-size:11.5px; color:var(--faint); margin-left:auto;}
   .leaflet-popup-content{margin:9px 11px; font-size:12.5px; line-height:1.45;}
+  .reg-resultat{margin-top:10px;}
+  .reg-ejer{margin-top:10px;}
+  .reg-navn{font-size:13.5px; font-weight:600; margin-bottom:5px;}
+  .reg-ejer .ef-item{border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2); margin-bottom:5px;}
   .pop-dim{color:var(--faint);}
   .pop-btn{margin-top:8px; width:100%; font:inherit; font-size:12.5px; font-weight:500; cursor:pointer; border-radius:7px; padding:5px 10px; border:1px solid var(--blue); background:var(--blue); color:#fff;}
   .pop-btn:hover{background:var(--blue-dark); border-color:var(--blue-dark);}
@@ -248,6 +252,16 @@
         <div id="lk-sugg" class="lk-sugg"></div>
       </div>
       <p class="asst-note">Henter live registerdata via Datafordeleren (BBR, Matriklen, EBR). Ejernavne kræver EJF-certifikat og kommer senere.</p>
+    </div>
+
+
+    <div class="card lookup">
+      <div style="font-weight:600; font-size:15px; margin-bottom:9px;">Søg på ejer <span class="beta" id="reg-antal"></span></div>
+      <div class="lk-wrap">
+        <input id="reg-input" type="text" autocomplete="off" placeholder="Skriv et ejernavn, fx Lis Frølich">
+      </div>
+      <div id="reg-resultat" class="reg-resultat"></div>
+      <p class="asst-note">Søger blandt de ejendomme du har slået op. Registret vokser efterhånden som du arbejder — et landsdækkende ejerindeks kræver Ejerfortegnelsens totaludtræk.</p>
     </div>
 
     <div class="finder">
@@ -1326,6 +1340,61 @@
   $("wait").addEventListener("click", function(e){ if(e.target===$("wait")) $("wait").classList.remove("open"); });
   $("wform").addEventListener("submit", function(e){ e.preventDefault(); $("wait").classList.remove("open"); toast("Tak! Vi skriver til dig når vi åbner."); });
 
+
+  /* ---- Lokalt ejendomsregister ----
+     Hver ejendom I slår op gemmes her, så navnesøgning virker på det I faktisk
+     har arbejdet med. Det er ikke et landsdækkende register — dét kræver
+     Ejerfortegnelsens totaludtræk og en godkendt EJF-adgang. */
+  var REGISTER = {};
+  try { REGISTER = JSON.parse(localStorage.getItem('afkast_register')||'{}'); } catch(e){}
+
+  function registerGem(p){
+    if(!p || !p.bfe) return;
+    REGISTER[p.bfe] = {
+      bfe:p.bfe, adresse:p.addr+(p.city? ", "+p.city : ""),
+      ejere:(p.ejere||[]).map(function(e){ return {navn:e.navn, andel:e.andel, overtagelsesdato:e.overtagelsesdato}; }),
+      ejerforhold:p.ownerType||null, type:p.type||null, areal:p.area||null,
+      kommune:p.kommune||null, set:new Date().toISOString().slice(0,10)
+    };
+    try { localStorage.setItem('afkast_register', JSON.stringify(REGISTER)); } catch(e){}
+    opdaterRegisterTael();
+  }
+  function registerAntal(){ return Object.keys(REGISTER).length; }
+  function opdaterRegisterTael(){
+    var el=$("reg-antal"); if(el) el.textContent = registerAntal()+(registerAntal()===1? " ejendom":" ejendomme");
+  }
+
+  function soegEjer(q){
+    var box=$("reg-resultat"); if(!box) return;
+    q=(q||"").trim().toLowerCase();
+    if(q.length<2){ box.innerHTML=""; return; }
+    var traf=[];
+    Object.keys(REGISTER).forEach(function(b){
+      var r=REGISTER[b];
+      var match=(r.ejere||[]).filter(function(e){ return (e.navn||"").toLowerCase().indexOf(q)>-1; });
+      if(match.length) traf.push({r:r, navne:match.map(function(e){return e.navn;})});
+    });
+    if(!traf.length){
+      box.innerHTML='<div class="empty" style="padding:14px 0;">Ingen ejere i dit register matcher \u201d'+q+'\u201d.</div>';
+      return;
+    }
+    // grupper pr. ejernavn, saa man ser hvem der ejer flere
+    var pr={};
+    traf.forEach(function(t){ t.navne.forEach(function(n){ (pr[n]=pr[n]||[]).push(t.r); }); });
+    box.innerHTML = Object.keys(pr).sort().map(function(n){
+      var liste=pr[n];
+      return '<div class="reg-ejer"><div class="reg-navn">'+n+
+        ' <span class="pop-dim">'+liste.length+(liste.length===1? " ejendom":" ejendomme")+'</span></div>'+
+        liste.map(function(r){
+          return '<div class="ef-item" data-adr="'+r.adresse+'">'+r.adresse+
+            '<span class="lk-type">'+(r.type||"")+(r.areal? " · "+r.areal+" m²":"")+'</span></div>';
+        }).join("")+'</div>';
+    }).join("");
+    box.querySelectorAll(".ef-item").forEach(function(el){
+      el.addEventListener("click", function(){ doLookup(el.getAttribute("data-adr")); });
+    });
+  }
+
   /* ---- Real property lookup (adresse -> live registerdata via Worker) ---- */
   function toProp(p){
     var b0=(p.bygninger||[])[0]||{};
@@ -1401,6 +1470,7 @@
         if(!res.ok || res.j.error){ toast("Opslag fejlede: "+(res.j.error||"ukendt fejl fra backend")); return; }
         var prop=toProp(res.j);
         REAL[prop.id]=prop;
+        registerGem(prop);
         openDetail(prop.id);
         toast("Registerdata hentet ✓");
       })
@@ -1414,6 +1484,8 @@
   document.querySelectorAll(".segbtn button").forEach(function(b){ b.addEventListener("click", function(){ pipeView=b.getAttribute("data-pv"); document.querySelectorAll(".segbtn button").forEach(function(x){x.classList.toggle("active", x===b);}); renderPipeline(); }); });
   initMap(); initFilters(); initAssistant();
   lookupInit("lk-input","lk-sugg");
+  if($("reg-input")) $("reg-input").addEventListener("input", function(){ soegEjer(this.value); });
+  opdaterRegisterTael();
   lookupInit("dlk-input","dlk-sugg");
   renderDash(); savePipe();
 
