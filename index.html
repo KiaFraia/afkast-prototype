@@ -1142,30 +1142,43 @@
   /* ---- Alle enheder på hovedejendommen ----
      Adresserne hentes fra DAWA på ejerlav + matrikelnr. Det virker både når man
      står på hovedejendommen og på en enkelt ejerlejlighed, og kræver ingen nøgle. */
-  var MAKS_ENKELTOPSLAG = 12;
+  var MAKS_ENKELTOPSLAG = 60;   // over dette er der for mange kald til at det giver mening
+  var SAMTIDIGE_OPSLAG = 4;     // nok til at det gaar hurtigt, lavt nok til ikke at oversvoemme worker'en
 
-  // Ét profilopslag pr. enhed, i rækkefølge så backenden ikke rammes af et
-  // stormløb. Svarene caches 24 timer i worker'en, så gensyn er billige.
+  // Ét profilopslag pr. enhed. Cellerne fyldes ud efterhaanden som svarene kommer,
+  // saa tabellen er brugbar mens resten henter. Worker'en cacher 24 timer.
   function hentArealEnkeltvis(adr){
     var i=0;
+    function arealAf(prof){
+      if(!prof || prof.error) return null;
+      var e=prof.enheder;
+      if(e){
+        if(e.boligArealM2) return {m:e.boligArealM2, slags:"bolig"};
+        if(e.erhvervArealM2) return {m:e.erhvervArealM2, slags:"erhverv"};
+      }
+      var ejl=prof.ejerlejlighed;
+      if(ejl && ejl.enhedArealM2!=null){
+        var erhverv = ejl.anvendelse && !/bolig|enfamilie|r\u00e6kke|k\u00e6de|dobbelthus|stuehus|kollegie/i.test(String(ejl.anvendelse));
+        return {m:ejl.enhedArealM2, slags: erhverv? "erhverv":"bolig"};
+      }
+      return prof.boligarealIAltM2 ? {m:prof.boligarealIAltM2, slags:"bolig"} : null;
+    }
     function naeste(){
-      if(i>=adr.length) return;
+      if(i>=adr.length) return Promise.resolve();
       var n=i++, celle=$("areal-"+n);
-      if(!celle){ naeste(); return; }
-      fetch(PROXY_URL+"/ejendom?adresse="+encodeURIComponent(adr[n].betegnelse||""))
+      if(!celle) return naeste();
+      return fetch(PROXY_URL+"/ejendom?adresse="+encodeURIComponent(adr[n].betegnelse||""))
         .then(function(r){ return r.ok? r.json() : null; })
         .catch(function(){ return null; })
         .then(function(prof){
-          var m = prof && !prof.error
-            ? ((prof.enheder && prof.enheder.boligArealM2) != null ? prof.enheder.boligArealM2
-              : (prof.ejerlejlighed && prof.ejerlejlighed.enhedArealM2 != null ? prof.ejerlejlighed.enhedArealM2
-              : (prof.boligarealIAltM2 || null)))
-            : null;
-          celle.innerHTML = m!=null ? nf.format(m)+" m²" : '<span class="dim">–</span>';
-          naeste();
+          var a=arealAf(prof);
+          celle.innerHTML = a
+            ? nf.format(a.m)+' m²'+(a.slags==="erhverv"? ' <span class="pop-dim">erhverv</span>' : '')
+            : '<span class="dim">–</span>';
+          return naeste();
         });
     }
-    naeste();
+    for(var k=0; k<Math.min(SAMTIDIGE_OPSLAG, adr.length); k++) naeste();
   }
 
   function indlaesEnheder(d){
@@ -1204,7 +1217,7 @@
 
         liste.innerHTML =
           '<table class="etab"><thead><tr>'+
-            '<th>Adresse</th>'+(visAreal? '<th class="num">Beboelsesareal</th>' : '')+
+            '<th>Adresse</th>'+(visAreal? '<th class="num">Areal</th>' : '')+
             '<th>Ejer</th><th>Seneste handel</th><th class="num">Handelspris</th>'+
           '</tr></thead><tbody>'+rk+'</tbody></table>';
 

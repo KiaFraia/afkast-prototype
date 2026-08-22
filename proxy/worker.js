@@ -210,15 +210,24 @@ async function buildProfile(query, env) {
 
   // 1) unit-level match first (enhedsadresse with etage/dør)
   let unitHits = [];
-  try { unitHits = await getJson(`${DAWA}/adresser?q=${encodeURIComponent(q)}&per_side=2`); } catch (e) {}
+  try { unitHits = await getJson(`${DAWA}/adresser?q=${encodeURIComponent(q)}&per_side=8`); } catch (e) {}
+
+  // DAWA's fritekstsøgning er upræcis på numeriske dørbetegnelser: "23C, 1. 1"
+  // giver også træf på "1. 2" og "1. 3". Krav om præcis ét træf faldt derfor
+  // igennem til en adgangsadresse-søgning der aldrig kan lykkes med etage og dør.
+  const ens = (x) => (x || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const valgt = unitHits.length === 1
+    ? unitHits[0]
+    : unitHits.find((h) => ens(h.adressebetegnelse) === ens(q)) || null;
+
   let a = null;
-  if (unitHits.length === 1) {
-    const unit = await buildUnitProfile(unitHits[0], env);
+  if (valgt) {
+    const unit = await buildUnitProfile(valgt, env);
     if (unit) return unit;
     // Enheden findes, men er ikke en ejerlejlighed — fx en lejebolig. Brug dens
     // egen adgangsadresse. En tekstsøgning med etage og dør giver aldrig træf i
     // adgangsadresser, og gav derfor "Ingen adresse fundet" for hele ejendomme.
-    a = unitHits[0].adgangsadresse || null;
+    a = valgt.adgangsadresse || null;
   }
 
   // 2) parent / adgangsadresse flow
