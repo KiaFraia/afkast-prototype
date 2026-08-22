@@ -241,28 +241,6 @@
   <section class="view active" id="view-find">
     <div class="vhead"><h1>Find deals</h1></div>
 
-    <div class="assistant card">
-      <div class="asst-top">
-        <div class="asst-title"><span class="sparkle">✦</span> Assistent <span class="beta">beta</span></div>
-        <button class="asst-gear" id="asst-gear" type="button" title="Indstillinger" aria-label="Indstillinger">⚙</button>
-      </div>
-      <form id="asst-form" class="asst-form">
-        <input id="asst-input" type="text" autocomplete="off" placeholder="Beskriv de leads du søger, fx “ejere over 70 i København der ikke bor på adressen”">
-        <button class="btn" type="submit">Søg</button>
-      </form>
-      <div id="asst-settings" class="asst-settings" style="display:none;">
-        <p class="asst-note" style="margin-top:0;">Åben model via API (standard: Groq, som kører Llama). Hent en gratis nøgle på console.groq.com. Uden nøgle bruges en simpel indbygget fortolkning. Nøglen gemmes kun lokalt i din browser og sendes direkte til udbyderen — kun til test; i produktion skal kaldet gå gennem en server.</p>
-        <label>API base-URL (OpenAI-kompatibel)</label>
-        <input id="asst-base" type="text" autocomplete="off" style="width:100%; box-sizing:border-box;">
-        <label style="margin-top:10px;">API-nøgle</label>
-        <input id="asst-key" type="password" autocomplete="off" placeholder="gsk_…" style="width:100%; box-sizing:border-box;">
-        <label style="margin-top:10px;">Model</label>
-        <input id="asst-model" type="text" autocomplete="off" style="width:100%; box-sizing:border-box;">
-        <div style="margin-top:10px;"><button class="btn sm" id="asst-save" type="button">Gem</button></div>
-      </div>
-      <div id="asst-result" class="asst-result" style="display:none;"></div>
-    </div>
-
     <div class="card lookup">
       <div style="font-weight:600; font-size:15px; margin-bottom:9px;">Slå ejendom op <span class="beta">rigtige data</span></div>
       <div class="lk-wrap">
@@ -848,6 +826,7 @@
     }
   }
   function initAssistant(){
+    if(!$("asst-form")) return; // assistenten er skjult i grænsefladen
     $("asst-form").addEventListener("submit", function(e){ e.preventDefault(); var v=$("asst-input").value.trim(); if(v) askAssistant(v); });
     $("asst-gear").addEventListener("click", function(){ var s=$("asst-settings"); s.style.display = s.style.display==="none"?"block":"none"; });
     $("asst-base").value=oaiBase(); $("asst-key").value=oaiKey(); $("asst-model").value=oaiModel();
