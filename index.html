@@ -68,10 +68,12 @@
   .lk-wrap{position:relative;}
   .lk-wrap input{width:100%; box-sizing:border-box; font:inherit; font-size:15px; padding:11px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2); outline:none;}
   .lk-wrap input:focus{border-color:var(--blue); background:#fff;}
-  .lk-sugg{position:absolute; left:0; right:0; top:46px; z-index:40; background:#fff; border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; box-shadow:0 8px 24px rgba(15,23,42,.10); display:none;}
+  .lk-sugg{position:absolute; left:0; right:0; top:46px; z-index:40; background:#fff; border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; box-shadow:0 8px 24px rgba(15,23,42,.10); display:none; max-height:280px; overflow-y:auto;}
   .lk-sugg div{padding:10px 14px; font-size:14px; cursor:pointer;}
   .lk-sugg div:hover{background:var(--bg2);}
   .lk-sugg .lk-type{font-size:11.5px; color:var(--faint); margin-left:6px;}
+  .lk-sugg .lk-tom{color:var(--faint); cursor:default; font-size:13px;}
+  .lk-sugg .lk-tom:hover{background:transparent;}
   .ef-list{max-height:190px; overflow:auto; margin-top:8px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2);}
   .ef-item{padding:8px 12px; font-size:13px; cursor:pointer; border-bottom:1px solid var(--line);}
   .ef-item:last-child{border-bottom:none;}
@@ -430,6 +432,10 @@
   // Nøgle hentes gratis på dataforsyningen.dk → Min side → Token.
   var DAF_TOKEN = "";
   var MATRIKEL_MIN_ZOOM = 15;
+  // Vi viser kun danske ejendomme, saa kortet skal heller ikke kunne forlade
+  // landet. Rammen daekker Skagen i nord, Gedser i syd, Blaavand i vest og
+  // Bornholm i oest, med lidt luft omkring.
+  var DK_RAMME = [[54.40, 7.60], [57.95, 15.45]], DK_MIN_ZOOM = 7;
   var matrikelLayer=null, matrikelCache={}, matrikelReq=null, matrikelTimer=null, matrikelLast=null;
   var matrikelPopupAaben=false;
   var matrikelColor="#e5007d";
@@ -462,7 +468,12 @@
 
   function initMap(){
     if(typeof L==="undefined"){ $("map").innerHTML='<div class="empty" style="padding:150px 0;">Kort kunne ikke indlæses (offline).</div>'; return; }
-    map = L.map('map', {scrollWheelZoom:true}).setView([56.0, 10.6], 7);
+    map = L.map('map', {
+      scrollWheelZoom:true,
+      minZoom: DK_MIN_ZOOM,
+      maxBounds: DK_RAMME,
+      maxBoundsViscosity: 1.0      // haard kant — man kan ikke trække ud af landet
+    }).setView([56.0, 10.6], DK_MIN_ZOOM);
 
     // eget lag-plan til matriklen, så ejendomspins altid ligger øverst
     map.createPane('matrikel');
@@ -658,9 +669,15 @@
      fordi ejerforhold hentes ét BFE-nummer ad gangen. */
   var KOMMUNER = [];
 
-  function zoomTil(bbox){
-    if(!map || !bbox || bbox.length!==4) return;
-    map.fitBounds([[bbox[1],bbox[0]],[bbox[3],bbox[2]]], {padding:[20,20]});
+  // At fitte hele en kommune giver zoom 10 — langt over graensen for at kunne
+  // soege. Vi gaar derfor til omraadets visuelle centrum i et zoom hvor
+  // matriklerne er fremme og soegningen kan koere med det samme.
+  function zoomTil(o, zoom){
+    if(!map || !o) return;
+    var c = o.visueltcenter;
+    if(c && c.length===2){ map.setView([c[1], c[0]], zoom); return; }
+    var b = o.bbox;
+    if(b && b.length===4){ map.setView([(b[1]+b[3])/2, (b[0]+b[2])/2], zoom); }
   }
   function fyldValg(el, liste, tom){
     el.innerHTML = '<option value="">'+tom+'</option>' +
@@ -691,16 +708,24 @@
       opdaterKommuner();
       var valgt=KOMMUNER.filter(function(x){ return x.region.navn===reg.value; });
       if(valgt.length){
-        // saml regionens kommuner til én ramme
-        var b=valgt.reduce(function(a,x){ return [Math.min(a[0],x.bbox[0]),Math.min(a[1],x.bbox[1]),
-                                                  Math.max(a[2],x.bbox[2]),Math.max(a[3],x.bbox[3])]; }, valgt[0].bbox.slice());
-        zoomTil(b);
+        // Gennemsnittet af kommunernes visuelle centre rammer land — rammens
+        // midte ville ofte lande i vandet.
+        var pkt=valgt.map(function(x){ return x.visueltcenter; }).filter(Boolean);
+        if(pkt.length){
+          var lon=pkt.reduce(function(a,c){ return a+c[0]; },0)/pkt.length;
+          var lat=pkt.reduce(function(a,c){ return a+c[1]; },0)/pkt.length;
+          map.setView([lat, lon], 10);
+        }
       }
+      by.value=""; sugg.style.display="none";
     });
 
     kom.addEventListener("change", function(){
       var k=KOMMUNER.filter(function(x){ return x.kode===kom.value; })[0];
-      if(k) zoomTil(k.bbox);
+      // MATRIKEL_MIN_ZOOM er 15. Under det vises ingen matrikler og soegningen
+      // koerer ikke, saa vi gaar lige over graensen med det samme.
+      if(k) zoomTil(k, 15);
+      by.value=""; sugg.style.display="none";
     });
 
     // Bysoegning paa tværs af landet. Postnumrene hentes én gang og filtreres
@@ -713,13 +738,23 @@
 
     function visForslag(){
       var q=by.value.trim().toLowerCase();
-      if(!q){ sugg.style.display="none"; return; }
       var valgtKom=kom.value;
+      // Tomt felt: vis listen alligevel, saa man kan vaelge uden at skrive.
+      // Er en kommune valgt, vises dens byer — ellers de foerste alfabetisk.
       var traf=POSTNUMRE.filter(function(x){
         if(valgtKom && !(x.kommuner||[]).some(function(k){ return k.kode===valgtKom; })) return false;
+        if(!q) return true;
         return x.navn.toLowerCase().indexOf(q)===0 || x.nr.indexOf(q)===0;
-      }).sort(function(a,b){ return a.navn.localeCompare(b.navn,"da"); }).slice(0,10);
-      if(!traf.length){ sugg.style.display="none"; return; }
+      }).sort(function(a,b){ return a.navn.localeCompare(b.navn,"da"); }).slice(0, q? 10 : (valgtKom? 40 : 0));
+      // Tomt felt uden kommune: en alfabetisk liste fra Agedrup hjaelper ingen.
+      if(!q && !valgtKom){
+        sugg.innerHTML = '<div class="lk-tom">Vælg en kommune, eller skriv de første bogstaver</div>';
+        sugg.style.display="block"; return;
+      }
+      if(!traf.length){
+        sugg.innerHTML = '<div class="lk-tom">Ingen by matcher</div>';
+        sugg.style.display="block"; return;
+      }
       sugg.innerHTML = traf.map(function(x){
         return '<div data-nr="'+x.nr+'">'+x.navn+'<span class="lk-type">'+x.nr+'</span></div>';
       }).join("");
@@ -729,12 +764,14 @@
           if(!x) return;
           by.value = x.navn+" ("+x.nr+")";
           sugg.style.display="none";
-          zoomTil(x.bbox);
+          zoomTil(x, 16);   // byens centrum — matrikler fremme, soegningen koerer
         });
       });
       sugg.style.display="block";
     }
     by.addEventListener("input", visForslag);
+    // Skifter man kommune, skal listen afspejle den med det samme
+    kom.addEventListener("change", function(){ if(document.activeElement===by) visForslag(); });
     by.addEventListener("focus", visForslag);
     document.addEventListener("click", function(e){ if(!e.target.closest(".lk-wrap")) sugg.style.display="none"; });
   }
