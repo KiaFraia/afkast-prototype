@@ -174,19 +174,29 @@ async function ejereBatch(bfeListe) {
 // BBR-oplysninger pr. jordstykke, batchet ligesom ejerne. Datafordeleren er et
 // licenseret API vi har adgang til, saa volumen er i orden her — modsat
 // matriklen.dk, der er en intern backend uden aftale om programmatisk brug.
-async function bbrForJordstykke(featureid, env) {
-  const nøgle = new Request(`https://cache.internal/bbr?v=1&js=${encodeURIComponent(featureid)}`);
+async function bbrForJordstykke(featureid, bfe, env) {
+  const nøgle = new Request(`https://cache.internal/bbr?v=2&js=${encodeURIComponent(featureid)}&b=${encodeURIComponent(bfe || "")}`);
   const cache = typeof caches !== "undefined" ? caches.default : null;
   if (cache) {
     const hit = await cache.match(nøgle);
     if (hit) return hit.json();
   }
   try {
-    const byg = await getJson(dafUrl("BBR/BBRPublic/1/rest/bygning", { jordstykke: featureid }, env));
+    // Ejerforholdskoden staar i BBR's ejendomsrelation. Den giver privatperson
+    // kontra selskab uden at spoerge matriklen.dk — kun ejerens navn kraever EJF.
+    const [byg, relation] = await Promise.all([
+      getJson(dafUrl("BBR/BBRPublic/1/rest/bygning", { jordstykke: featureid }, env)).catch(() => null),
+      bfe ? getJson(dafUrl("BBR/BBRPublic/1/rest/ejendomsrelation", { bfeNummer: bfe }, env)).catch(() => null) : null,
+    ]);
+    const rel = Array.isArray(relation) ? relation[0] : relation;
+    const ejerforhold = rel ? (EJERFORHOLD[rel.ejendommensEjerforholdskode] || null) : null;
+    const ejendomstype = rel ? (EJENDOMSTYPE[rel.ejendomstype] || null) : null;
     const aktive = (byg || []).filter((b) => AKTIV_STATUS.includes(b.status));
-    if (!aktive.length) return null;
+    if (!aktive.length && !rel) return null;
     const anv = aktive.map((b) => ANVENDELSE[b.byg021BygningensAnvendelse] || String(b.byg021BygningensAnvendelse || ""));
     const ud = {
+      ejerforhold,
+      ejendomstype,
       anvendelser: anv,
       kategori: boligKategori(anv),
       opført: aktive.map((b) => b.byg026Opførelsesår).filter(Boolean).sort()[0] ?? null,
@@ -214,15 +224,16 @@ function boligKategori(anv) {
   return navne.length ? navne[0] : null;
 }
 
-async function bbrBatch(idListe, env) {
-  const kø = idListe.slice(0, EJERE_MAKS);
+async function bbrBatch(par, env) {
+  // to udgaaende kald pr. ejendom, saa loftet er det halve af ejernes
+  const kø = par.slice(0, Math.floor(EJERE_MAKS / 2));
   const ud = {};
   let i = 0;
   async function arbejd() {
     while (i < kø.length) {
-      const id = kø[i++];
-      const r = await bbrForJordstykke(id, env);
-      if (r) ud[id] = r;
+      const { js, bfe } = kø[i++];
+      const r = await bbrForJordstykke(js, bfe, env);
+      if (r) ud[js] = r;
     }
   }
   await Promise.all(Array.from({ length: Math.min(4, kø.length) }, arbejd));
@@ -469,11 +480,13 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/bbr") {
       if (!env.DAF_USER || !env.DAF_PASS) return json({ error: "server missing DAF_USER/DAF_PASS" }, 500, o);
-      const ids = (url.searchParams.get("js") || "")
-        .split(",").map((x) => x.trim()).filter((x) => /^\d+$/.test(x));
-      if (!ids.length) return json({}, 200, o);
+      const par = (url.searchParams.get("js") || "")
+        .split(",").map((x) => x.trim()).filter(Boolean)
+        .map((x) => { const [js, bfe] = x.split(":"); return { js, bfe: bfe || null }; })
+        .filter((x) => /^\d+$/.test(x.js));
+      if (!par.length) return json({}, 200, o);
       try {
-        return json(await bbrBatch(ids, env), 200, o);
+        return json(await bbrBatch(par, env), 200, o);
       } catch (e) {
         return json({ error: (e && e.message) || "bbr-opslag fejlede" }, 502, o);
       }

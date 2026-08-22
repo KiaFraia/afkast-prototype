@@ -827,8 +827,13 @@
     // Hent kun de ejere vi ikke har i forvejen. Uden det ville hvert filterskift
     // slaa alle ejendomme op igen — spild, og kaldene begynder at fejle.
     var mangler = bfeListe.filter(function(b){ return ejerCache[b]===undefined; });
-    var jsIds = Array.from(new Set(medBfe.map(function(l){ return l.feature.properties.featureid; }).filter(Boolean)));
-    var manglerBbr = jsIds.filter(function(i){ return bbrCache[i]===undefined; });
+    var jsPar = {};
+    medBfe.forEach(function(l){
+      var q=l.feature.properties;
+      if(q.featureid) jsPar[q.featureid]=q.bfenummer||"";
+    });
+    var manglerBbr = Object.keys(jsPar).filter(function(i){ return bbrCache[i]===undefined; })
+                           .map(function(i){ return i+":"+jsPar[i]; });
 
     Promise.all([
       adresserIUdsnit(c, radius),
@@ -839,7 +844,7 @@
       Object.keys(svar[1]).forEach(function(b){ ejerCache[b]=svar[1][b]; });
       mangler.forEach(function(b){ if(ejerCache[b]===undefined) ejerCache[b]=null; });
       Object.keys(svar[2]).forEach(function(i){ bbrCache[i]=svar[2][i]; });
-      manglerBbr.forEach(function(i){ if(bbrCache[i]===undefined) bbrCache[i]=null; });
+      manglerBbr.forEach(function(x){ var i=x.split(":")[0]; if(bbrCache[i]===undefined) bbrCache[i]=null; });
       var ejere={};
       bfeListe.forEach(function(b){ if(ejerCache[b]) ejere[b]=ejerCache[b]; });
 
@@ -855,9 +860,12 @@
         var aar=(e&&e.overtagelsesdato)? +e.overtagelsesdato.slice(0,4) : null;
         var mangler=[];
 
+        // Ejerforhold kan komme fra to kilder: matriklen.dk (med navn) eller
+        // BBR (kun typen). BBR er den robuste, saa den bruges naar navnet mangler.
+        var forhold = (e && e.ejerforhold) || (bbr && bbr.ejerforhold) || null;
         if(oensket){
-          if(!e) mangler.push("ejerforhold");
-          else if((oensket==="Privatperson")!==erPrivat(e)) return;
+          if(!forhold) mangler.push("ejerforhold");
+          else if((oensket==="Privatperson") !== /privatperson/i.test(forhold)) return;
         }
         if(minTid>0){
           if(!aar) mangler.push("ejertid");
@@ -929,7 +937,9 @@
             (t.e&&t.e.navn
               ? t.e.navn+'<span style="color:var(--muted)">'+(t.e.ejerforhold? ' · '+t.e.ejerforhold:'')+
                 (t.aar? ' · '+(YEAR-t.aar)+' års ejertid · overtaget '+t.aar : '')+'</span>'
-              : '<span class="pop-dim">Ejer ikke hentet — matriklen.dk svarer ikke lige nu</span>')+
+              : (t.bbr&&t.bbr.ejerforhold
+                  ? t.bbr.ejerforhold+'<span class="pop-dim"> · ejernavn kræver EJF-adgang</span>'
+                  : '<span class="pop-dim">Ejerforhold ikke hentet</span>'))+
           '</div>'+
         '</div>'+
         '<div class="acts">'+
