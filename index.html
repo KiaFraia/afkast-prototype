@@ -423,7 +423,7 @@
   });
 
   /* ---- Map ---- */
-  var map=null, markers={}, markerLayer=null;
+  var map=null, markers={}, markerLayer=null, sidsteHits=null;
 
   // Ortofoto: med en gratis Dataforsyningen-nøgle bruges det officielle danske
   // ortofoto (12,5 cm). Uden nøgle bruges Esri's luftfoto, så kortet altid virker.
@@ -622,6 +622,17 @@
         '<button onclick="openBiz('+d.id+')" style="margin-top:6px; cursor:pointer; border:1px solid #1763d1; background:#fff; color:#1763d1; border-radius:8px; padding:5px 10px;">Business case</button>');
       m.addTo(markerLayer); markers[d.id]=m;
     });
+
+    // Flyt kortet hen til resultaterne — men kun når filtrene faktisk giver et
+    // andet sæt. Ellers ville kortet også hoppe hver gang man gemmer et lead.
+    var noegle = list.map(function(o){ return o.p.id; }).join(",");
+    if(noegle !== sidsteHits){
+      sidsteHits = noegle;
+      if(list.length){
+        var b = L.latLngBounds(list.map(function(o){ return [o.p.lat, o.p.lng]; }));
+        map.fitBounds(b, {padding:[36,36], maxZoom:14});
+      }
+    }
   }
   function focusMap(id){ if(!map) return; var d=byId(id); map.setView([d.lat,d.lng], 13); if(markers[id]) markers[id].openPopup(); }
 
