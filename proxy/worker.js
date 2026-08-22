@@ -133,7 +133,13 @@ async function ejereBatch(bfeListe) {
       const b = kø[i++];
       const e = await hentEjere(b);
       if (e && e.liste && e.liste.length) {
-        ud[b] = { ejerforhold: e.liste[0].ejerforhold, type: e.liste[0].type, overtagelsesdato: e.liste[0].overtagelsesdato };
+        ud[b] = {
+          navn: e.liste.map((x) => x.navn).filter(Boolean).join(", "),
+          antal: e.antal,
+          ejerforhold: e.liste[0].ejerforhold,
+          type: e.liste[0].type,
+          overtagelsesdato: e.liste[0].overtagelsesdato,
+        };
       }
     }
   }

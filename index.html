@@ -597,57 +597,9 @@
   /* ---- Farv matrikler efter ejerskabsfilteret ----
      Ejerforhold findes kun pr. BFE-nummer, så det hentes samlet gennem worker'en.
      Ved brede kortudsnit er der for mange matrikler til at det giver mening. */
-  var MATRIKEL_EJER_MAKS = 80;
-  var ejerCache = {}, ejerReq = null;
-
-  function markerEfterEjer(){
-    if(!matrikelLayer) return;
-    var oensket = $("f-ownertype") ? $("f-ownertype").value : "";
-    var lag = [];
-    matrikelLayer.eachLayer(function(g){ if(g.eachLayer) g.eachLayer(function(l){ if(l.feature) lag.push(l); }); });
-    if(!lag.length) return;
-
-    if(!oensket){ lag.forEach(function(l){ l.setStyle(matrikelStyle()); }); return; }
-
-    var bfe = lag.map(function(l){ return l.feature.properties.bfenummer; })
-                 .filter(function(b){ return b && ejerCache[b]===undefined; });
-    var unikke = Array.from(new Set(bfe));
-
-    if(unikke.length > MATRIKEL_EJER_MAKS){
-      matrikelHint(lag.length+" jordstykker · zoom ind for at markere efter ejerskab (maks "+MATRIKEL_EJER_MAKS+")");
-      return;
-    }
-    if(!unikke.length){ farvlag(lag, oensket); return; }
-
-    if(ejerReq) ejerReq.abort();
-    ejerReq = new AbortController();
-    matrikelHint("Slår ejerforhold op for "+unikke.length+" ejendomme…");
-    fetch(PROXY_URL+"/ejere?bfe="+unikke.join(","), {signal:ejerReq.signal})
-      .then(function(r){ return r.ok? r.json() : {}; })
-      .then(function(svar){
-        unikke.forEach(function(b){ ejerCache[b] = svar[b] || null; });
-        farvlag(lag, oensket);
-      })
-      .catch(function(err){ if(err.name!=="AbortError") matrikelHint("Kunne ikke hente ejerforhold."); });
-  }
+  var ejerCache = {};
 
   function erPrivat(e){ return !!e && /privatperson/i.test(e.ejerforhold||""); }
-
-  function farvlag(lag, oensket){
-    var traf=0;
-    lag.forEach(function(l){
-      var e = ejerCache[l.feature.properties.bfenummer];
-      var match = e && (oensket==="Privatperson" ? erPrivat(e) : !erPrivat(e));
-      if(match){
-        traf++;
-        l.setStyle({color:"#dc2626", weight:2.5, opacity:1, fillColor:"#dc2626", fillOpacity:.28});
-        l.bringToFront();
-      } else {
-        l.setStyle({color:matrikelColor, weight:1, opacity:.35, fillColor:matrikelColor, fillOpacity:.02});
-      }
-    });
-    matrikelHint(traf+" af "+lag.length+" jordstykker matcher \u201d"+oensket+"\u201d · markeret med rødt");
-  }
 
   function drawMatrikel(gj){
     matrikelLayer.clearLayers();
@@ -665,7 +617,7 @@
       }
     }).addTo(matrikelLayer);
     matrikelHint((gj.features||[]).length+" jordstykker · klik et for matrikelnr., areal og BFE-nummer");
-    markerEfterEjer();
+    soegEjendomme();
   }
   function renderMarkers(list){
     if(!map) return;
@@ -681,6 +633,126 @@
   }
   function focusMap(id){ if(!map) return; var d=byId(id); map.setView([d.lat,d.lng], 13); if(markers[id]) markers[id].openPopup(); }
 
+
+  /* ---- Søg rigtige ejendomme i kortudsnittet ----
+     Tre kald, uanset hvor mange matrikler der er i udsnittet:
+       1) jordstykker (allerede hentet til matrikellaget)
+       2) adgangsadresser i samme cirkel — giver adresse pr. matrikel
+       3) /ejere i worker'en — ejerforhold pr. BFE
+     Et opslag pr. matrikel ville vaere hundredvis af kald. */
+  var SOEG_MAKS = 80;      // hvor mange matrikler vi vil slaa ejere op for
+  var VIS_ANTAL = 50;      // hvor mange der vises i listen ad gangen
+  var visGraense = VIS_ANTAL, sidsteTraef = [];
+
+  function adresserIUdsnit(c, radius){
+    return fetch('https://api.dataforsyningen.dk/adgangsadresser?per_side=400&cirkel='+
+                 c.lng.toFixed(6)+','+c.lat.toFixed(6)+','+radius)
+      .then(function(r){ return r.ok? r.json() : []; })
+      .then(function(liste){
+        var kort={};
+        liste.forEach(function(a){
+          var j=a.jordstykke; if(!j || !j.ejerlav) return;
+          var n=j.ejerlav.kode+"/"+j.matrikelnr;
+          if(!kort[n]) kort[n]={betegnelse:a.adressebetegnelse, antal:0};
+          kort[n].antal++;
+        });
+        return kort;
+      })
+      .catch(function(){ return {}; });
+  }
+
+  function soegEjendomme(){
+    var box=$("deal-list"), taeller=$("deal-count");
+    if(!map || !box) return;
+    if(map.getZoom() < MATRIKEL_MIN_ZOOM || !matrikelLayer.getLayers().length){
+      taeller.textContent="";
+      box.innerHTML='<div class="card"><div class="empty">Zoom ind på kortet for at søge blandt rigtige ejendomme.</div></div>';
+      return;
+    }
+    var lag=[];
+    matrikelLayer.eachLayer(function(g){ if(g.eachLayer) g.eachLayer(function(l){ if(l.feature) lag.push(l); }); });
+    var medBfe = lag.filter(function(l){ return l.feature.properties.bfenummer; });
+    if(medBfe.length > SOEG_MAKS){
+      taeller.textContent="";
+      box.innerHTML='<div class="card"><div class="empty">'+medBfe.length+' ejendomme i udsnittet — zoom ind for at søge (maks '+SOEG_MAKS+').</div></div>';
+      return;
+    }
+    if(!medBfe.length){ taeller.textContent=""; box.innerHTML='<div class="card"><div class="empty">Ingen ejendomme i udsnittet.</div></div>'; return; }
+
+    var c=map.getCenter(), radius=Math.min(Math.round(c.distanceTo(map.getBounds().getNorthEast())), 1200);
+    box.innerHTML='<div class="card"><div class="empty">Slår '+medBfe.length+' ejendomme op…</div></div>';
+    var bfeListe=Array.from(new Set(medBfe.map(function(l){ return l.feature.properties.bfenummer; })));
+
+    Promise.all([
+      adresserIUdsnit(c, radius),
+      fetch(PROXY_URL+"/ejere?bfe="+bfeListe.join(",")).then(function(r){ return r.ok? r.json():{}; }).catch(function(){ return {}; })
+    ]).then(function(svar){
+      var adr=svar[0], ejere=svar[1];
+      Object.keys(ejere).forEach(function(b){ ejerCache[b]=ejere[b]; });
+
+      var oensket=$("f-ownertype").value, minTid=+$("f-tenure").value;
+      var traef=[];
+      medBfe.forEach(function(l){
+        var p=l.feature.properties, e=ejere[p.bfenummer];
+        if(!e) return;
+        if(oensket && (oensket==="Privatperson") !== erPrivat(e)) return;
+        var aar = e.overtagelsesdato ? +e.overtagelsesdato.slice(0,4) : null;
+        if(minTid>0 && (!aar || (YEAR-aar) < minTid)) return;
+        var a=adr[p.ejerlavkode+"/"+p.matrikelnr];
+        traef.push({p:p, e:e, adresse:(a&&a.betegnelse)||null, enheder:(a&&a.antal)||0, aar:aar, lag:l});
+      });
+      traef.sort(function(x,y){ return (x.aar||9999)-(y.aar||9999); });
+      sidsteTraef=traef; visGraense=VIS_ANTAL;
+      markerTraef(medBfe, traef);
+      visTraef();
+    });
+  }
+
+  function markerTraef(alle, traef){
+    var ramt={};
+    traef.forEach(function(t){ ramt[t.p.bfenummer]=1; });
+    alle.forEach(function(l){
+      if(ramt[l.feature.properties.bfenummer]){
+        l.setStyle({color:"#dc2626", weight:2.5, opacity:1, fillColor:"#dc2626", fillOpacity:.28});
+        l.bringToFront();
+      } else {
+        l.setStyle({color:matrikelColor, weight:1, opacity:.35, fillColor:matrikelColor, fillOpacity:.02});
+      }
+    });
+  }
+
+  function visTraef(){
+    var box=$("deal-list");
+    $("deal-count").textContent = sidsteTraef.length+(sidsteTraef.length===1?" ejendom":" ejendomme")+" matcher i kortudsnittet";
+    if(!sidsteTraef.length){ box.innerHTML='<div class="card"><div class="empty">Ingen ejendomme matcher filtrene her.</div></div>'; return; }
+    var vist=sidsteTraef.slice(0, visGraense);
+    box.innerHTML = vist.map(function(t){
+      var ejertid = t.aar? (YEAR-t.aar)+" års ejertid · overtaget "+t.aar : "";
+      return '<div class="card deal" data-bfe="'+t.p.bfenummer+'">'+
+        '<div class="main">'+
+          '<div class="addr">'+(t.adresse || ("Matr.nr. "+t.p.matrikelnr+" "+t.p.ejerlavnavn))+'</div>'+
+          '<div class="meta">'+(t.p.kommunenavn||"")+' · '+nf.format(t.p.registreretareal||0)+' m² grund'+
+            (t.enheder>1? ' · '+t.enheder+' adresser':'')+'</div>'+
+          '<div class="owner">'+(t.e.navn||"–")+
+            (t.e.ejerforhold? ' <span style="color:var(--muted)">· '+t.e.ejerforhold+(ejertid? ' · '+ejertid:'')+'</span>' : '')+
+          '</div>'+
+        '</div>'+
+        '<div class="acts"><button class="btn sm" data-adr="'+(t.adresse||"")+'">Se ejendom</button></div>'+
+      '</div>';
+    }).join("") +
+    (sidsteTraef.length > visGraense
+      ? '<button class="btn ghost" id="vis-flere" style="width:100%;">Vis flere ('+(sidsteTraef.length-visGraense)+' mere)</button>' : '');
+
+    box.querySelectorAll("[data-adr]").forEach(function(b){
+      b.addEventListener("click", function(e){ e.stopPropagation(); var a=b.getAttribute("data-adr"); if(a) doLookup(a); });
+    });
+    box.querySelectorAll(".deal").forEach(function(el){
+      el.addEventListener("click", function(){ var t=sidsteTraef.filter(function(x){ return String(x.p.bfenummer)===el.getAttribute("data-bfe"); })[0]; if(t&&t.lag) t.lag.openPopup(); });
+    });
+    var f=$("vis-flere");
+    if(f) f.addEventListener("click", function(){ visGraense += VIS_ANTAL; visTraef(); });
+  }
+
   /* ---- Find deals ---- */
   function initFilters(){
     var regions=[...new Set(DATA.map(function(d){return d.region;}))].sort();
@@ -688,7 +760,7 @@
     ["f-region","f-ownertype","f-age","f-lives","f-props","f-tenure","f-price","f-type","f-units","f-area"].forEach(function(id){
       $(id).addEventListener("input", renderDeals);
     });
-    $("f-ownertype").addEventListener("input", markerEfterEjer);
+    ["f-ownertype","f-tenure"].forEach(function(id){ $(id).addEventListener("input", soegEjendomme); });
     $("f-reset").addEventListener("click", function(){
       $("f-region").value=""; $("f-ownertype").value=""; $("f-age").value=0; $("f-lives").value="";
       $("f-props").value=1; $("f-tenure").value=0; $("f-price").value=7000000; $("f-type").value=""; $("f-units").value=1; $("f-area").value=0;
@@ -719,8 +791,9 @@
     }).map(function(p){ return {p:p, s:leadScore(p)}; })
       .sort(function(a,b){ return b.s.score-a.s.score; });
 
-    $("deal-count").textContent = list.length + " leads";
     renderMarkers(list);
+    soegEjendomme();
+    return;
     var box=$("deal-list"); box.innerHTML="";
     if(!list.length){ box.innerHTML='<div class="card"><div class="empty">Ingen leads matcher filtrene.</div></div>'; return; }
     list.forEach(function(o){
