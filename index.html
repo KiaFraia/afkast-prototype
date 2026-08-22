@@ -279,17 +279,11 @@
         <div class="fsection">
           <h4>Ejerskab</h4>
           <div class="fld"><label>Ejerskabstype</label><select id="f-ownertype"><option value="">Alle</option><option>Privatperson</option><option>Selskab</option></select></div>
-          <div class="fld"><div class="rowout"><span>Ejers alder (min.)</span><b id="o-age">fra</b></div><input id="f-age" type="range" min="0" max="90" step="1" value="0"></div>
-          <div class="fld"><label>Bor ejer på adressen?</label><select id="f-lives"><option value="">Alle</option><option value="ja">Ja</option><option value="nej">Nej</option></select></div>
-          <div class="fld"><div class="rowout"><span>Antal ejendomme (min.)</span><b id="o-props">1</b></div><input id="f-props" type="range" min="1" max="8" step="1" value="1"></div>
-          <div class="fld"><div class="rowout"><span>Ejertid (min. år)</span><b id="o-tenure">0</b></div><input id="f-tenure" type="range" min="0" max="30" step="1" value="0"></div>
-          <div class="fld"><div class="rowout"><span>Seneste handelspris (maks.)</span><b id="o-price">–</b></div><input id="f-price" type="range" min="500000" max="7000000" step="100000" value="7000000"></div>
+          <div class="fld"><div class="rowout"><span>Ejertid (min. år)</span><b id="o-tenure">0</b></div><input id="f-tenure" type="range" min="0" max="50" step="1" value="0"></div>
         </div>
         <div class="fsection">
-          <h4>Ejendom</h4>
-          <div class="fld"><label>Ejendomstype</label><select id="f-type"><option value="">Alle typer</option><option>Enfamiliehus</option><option>Flerfamiliehus</option><option>Ejerlejlighed</option></select></div>
-          <div class="fld"><div class="rowout"><span>Antal boligenheder (min.)</span><b id="o-units">1</b></div><input id="f-units" type="range" min="1" max="10" step="1" value="1"></div>
-          <div class="fld"><div class="rowout"><span>Beboelsesareal (min. m²)</span><b id="o-area">0</b></div><input id="f-area" type="range" min="0" max="300" step="10" value="0"></div>
+          <h4>Kræver adgang vi ikke har</h4>
+          <p class="asst-note" style="margin:0;">Ejers alder og bopæl kræver CPR. Antal ejendomme pr. ejer kræver Ejerfortegnelsens totaludtræk. Handelspris kræver Tinglysning. Ejendomstype, areal og antal enheder kræver et BBR-opslag pr. ejendom.</p>
         </div>
         <button class="btn ghost sm" style="width:100%; margin-top:14px;" id="f-reset">Nulstil filtre</button>
       </div>
@@ -726,8 +720,8 @@
      plus ét batch-opslag af ejere gennem worker'en. */
   // Worker'en kan hoejst slaa 45 ejere op pr. kald (Cloudflares grænse paa 50
   // udgaaende kald). Vi deler derfor op i bundter og koerer dem parallelt.
-  var SOEG_MAKS = 300, VIS_ANTAL = 50, BUNDT = 45, SAMTIDIGE_BUNDTER = 4;
-  var visGraense = VIS_ANTAL, sidsteTraef = [];
+  var SOEG_MAKS = 120, VIS_ANTAL = 50, BUNDT = 25, SAMTIDIGE_BUNDTER = 2;
+  var visGraense = VIS_ANTAL, sidsteTraef = [], sidsteOpslag = null;
 
   function adresserIUdsnit(c, radius){
     return fetch('https://api.dataforsyningen.dk/adgangsadresser?per_side=400&cirkel='+
@@ -786,12 +780,18 @@
     box.innerHTML=beskedKort("Slår "+medBfe.length+" ejendomme op…");
     var bfeListe=Array.from(new Set(medBfe.map(function(l){ return l.feature.properties.bfenummer; })));
 
+    // Hent kun de ejere vi ikke har i forvejen. Uden det ville hvert filterskift
+    // slaa alle ejendomme op igen — spild, og kaldene begynder at fejle.
+    var mangler = bfeListe.filter(function(b){ return ejerCache[b]===undefined; });
     Promise.all([
       adresserIUdsnit(c, radius),
-      hentEjereIBundter(bfeListe)
+      mangler.length? hentEjereIBundter(mangler) : Promise.resolve({})
     ]).then(function(svar){
-      var adr=svar[0], ejere=svar[1];
-      Object.keys(ejere).forEach(function(b){ ejerCache[b]=ejere[b]; });
+      var adr=svar[0];
+      Object.keys(svar[1]).forEach(function(b){ ejerCache[b]=svar[1][b]; });
+      mangler.forEach(function(b){ if(ejerCache[b]===undefined) ejerCache[b]=null; });
+      var ejere={};
+      bfeListe.forEach(function(b){ if(ejerCache[b]) ejere[b]=ejerCache[b]; });
 
       var oensket=$("f-ownertype").value, minTid=+$("f-tenure").value;
       var traef=[];
@@ -806,6 +806,8 @@
       });
       traef.sort(function(x,y){ return (x.aar||9999)-(y.aar||9999); });
       sidsteTraef=traef; visGraense=VIS_ANTAL;
+      // Skeln mellem "ingen matchede filtrene" og "vi fik slet ingen ejerdata"
+      sidsteOpslag = {undersoegt: medBfe.length, medEjer: Object.keys(ejere).length};
       markerTraef(medBfe, traef);
       visTraef();
     });
@@ -827,7 +829,15 @@
   function visTraef(){
     var box=$("deal-list");
     $("deal-count").textContent = sidsteTraef.length+(sidsteTraef.length===1? " ejendom":" ejendomme")+" i kortudsnittet";
-    if(!sidsteTraef.length){ box.innerHTML=beskedKort("Ingen ejendomme matcher filtrene her."); return; }
+    if(!sidsteTraef.length){
+      var o=sidsteOpslag||{};
+      box.innerHTML = beskedKort(
+        !o.medEjer
+          ? "Kunne ikke hente ejerforhold for de "+(o.undersoegt||0)+" ejendomme i udsnittet. Prøv igen om et øjeblik."
+          : "Ingen af de "+o.medEjer+" ejendomme med ejerdata matcher filtrene. Prøv at nulstille ejerskabstype eller ejertid."
+      );
+      return;
+    }
 
     box.innerHTML = sidsteTraef.slice(0, visGraense).map(function(t){
       var ejertid = t.aar? (YEAR-t.aar)+" års ejertid · overtaget "+t.aar : null;
@@ -878,63 +888,19 @@
 
   /* ---- Find deals ---- */
   function initFilters(){
-    var regions=[...new Set(DATA.map(function(d){return d.region;}))].sort();
-    regions.forEach(function(r){ var o=document.createElement("option"); o.value=r; o.textContent=r; $("f-region").appendChild(o); });
-    ["f-region","f-ownertype","f-age","f-lives","f-props","f-tenure","f-price","f-type","f-units","f-area"].forEach(function(id){
-      $(id).addEventListener("input", renderDeals);
-    });
-    ["f-ownertype","f-tenure"].forEach(function(id){ $(id).addEventListener("input", soegEjendomme); });
+    ["f-ownertype","f-tenure"].forEach(function(id){ $(id).addEventListener("input", renderDeals); });
     $("f-reset").addEventListener("click", function(){
-      $("f-region").value=""; $("f-ownertype").value=""; $("f-age").value=0; $("f-lives").value="";
-      $("f-props").value=1; $("f-tenure").value=0; $("f-price").value=7000000; $("f-type").value=""; $("f-units").value=1; $("f-area").value=0;
+      $("f-ownertype").value=""; $("f-tenure").value=0;
+      $("f-region").value=""; $("f-kommune").value=""; $("f-by").value="";
       renderDeals();
     });
     renderDeals();
   }
+
+  // Listen kommer fra soegEjendomme(); mock-data bruges ikke laengere til visning.
   function renderDeals(){
-    var region=$("f-region").value, ot=$("f-ownertype").value, minAge=+$("f-age").value, lives=$("f-lives").value,
-        minProps=+$("f-props").value, minTen=+$("f-tenure").value, maxPrice=+$("f-price").value, ptype=$("f-type").value, minUnits=+$("f-units").value, minArea=+$("f-area").value;
-    $("o-age").textContent = minAge===0 ? "alle" : minAge+"+ år";
-    $("o-props").textContent = minProps; $("o-tenure").textContent = minTen; $("o-price").textContent = kr(maxPrice);
-    $("o-units").textContent = minUnits; $("o-area").textContent = minArea+" m²";
-
-    var list = DATA.filter(function(p){
-      if(region && p.region!==region) return false;
-      if(ot && p.ownerType!==ot) return false;
-      if(minAge>0 && !(p.ownerAge!==null && p.ownerAge>=minAge)) return false;
-      if(lives==="ja" && !p.ownerLivesHere) return false;
-      if(lives==="nej" && p.ownerLivesHere) return false;
-      if(p.ownerPropCount<minProps) return false;
-      if(tenure(p)<minTen) return false;
-      if(p.lastSalePrice>maxPrice) return false;
-      if(ptype && p.type!==ptype) return false;
-      if(p.units<minUnits) return false;
-      if(p.area<minArea) return false;
-      return true;
-    }).map(function(p){ return {p:p, s:leadScore(p)}; })
-      .sort(function(a,b){ return b.s.score-a.s.score; });
-
-    renderMarkers(list);
+    $("o-tenure").textContent = $("f-tenure").value;
     soegEjendomme();
-    return;
-    var box=$("deal-list"); box.innerHTML="";
-    if(!list.length){ box.innerHTML='<div class="card"><div class="empty">Ingen leads matcher filtrene.</div></div>'; return; }
-    list.forEach(function(o){
-      var d=o.p;
-      var el=document.createElement("div"); el.className="card deal";
-      el.innerHTML =
-        '<div class="main">'+
-          '<div class="addr">'+d.addr+'</div>'+
-          '<div class="meta">'+d.city+' · '+d.type+' · '+d.area+' m² · '+d.units+' enhed'+(d.units>1?'er':'')+'</div>'+
-          '<div class="owner">'+d.ownerName+' <span style="color:var(--muted)">· '+d.ownerPropCount+' ejendom'+(d.ownerPropCount>1?'me':'')+' · seneste handel '+d.saleYear+' · '+kr(d.lastSalePrice)+'</span></div>'+
-        '</div>'+
-        '<div class="acts">'+
-          '<button class="btn sm" data-gem="'+d.id+'">'+(inPipe(d.id)?'✓ Gemt':'Gem som lead')+'</button>'+
-        '</div>';
-      el.addEventListener("click", function(e){ if(!e.target.closest("button")) openDetail(d.id); });
-      box.appendChild(el);
-    });
-    box.querySelectorAll("[data-gem]").forEach(function(b){ b.addEventListener("click", function(){ addPipe(+b.getAttribute("data-gem")); renderDeals(); }); });
   }
 
   /* ---- AI assistant (natural language -> filters, hosted open model, OpenAI-compatible) ---- */
@@ -969,19 +935,11 @@
     var ar=clampNum(f.minArea,0,300,0); if(ar>0) c.push(ar+"+ m²");
     return c;
   }
+  // Assistenten er skjult; saetter kun de filtre der stadig findes i panelet.
   function applyAsstFilters(f){
     f=f||{};
-    var regs=["Hovedstaden","Midtjylland","Syddanmark","Nordjylland"], typs=["Enfamiliehus","Flerfamiliehus","Ejerlejlighed"];
-    $("f-region").value = regs.indexOf(f.region)>-1 ? f.region : "";
     $("f-ownertype").value = (f.ownerType==="Privatperson"||f.ownerType==="Selskab") ? f.ownerType : "";
-    $("f-age").value = clampNum(f.minAge,0,90,0);
-    $("f-lives").value = (f.lives==="ja"||f.lives==="nej") ? f.lives : "";
-    $("f-props").value = clampNum(f.minProps,1,8,1);
-    $("f-tenure").value = clampNum(f.minTenure,0,30,0);
-    $("f-price").value = (Number(f.maxPrice)>0) ? clampNum(f.maxPrice,500000,7000000,7000000) : 7000000;
-    $("f-type").value = typs.indexOf(f.type)>-1 ? f.type : "";
-    $("f-units").value = clampNum(f.minUnits,1,10,1);
-    $("f-area").value = clampNum(f.minArea,0,300,0);
+    $("f-tenure").value = clampNum(f.minTenure,0,50,0);
     renderDeals();
   }
   function renderAsstResult(res){

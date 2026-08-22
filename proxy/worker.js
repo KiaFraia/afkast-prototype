@@ -100,6 +100,15 @@ function opgørEnheder(liste) {
 // så opslaget skal blive her på serveren.
 async function hentEjere(bfe) {
   if (!bfe) return null;
+  // Gem svaret hos os i en uge. Uden det rammer hvert kortudsnit matriklen.dk
+  // med ét kald pr. ejendom hver gang, og de begynder at afvise os. Ejerskifte
+  // sker sjældent nok til at en uge er rigeligt.
+  const nøgle = new Request(`https://cache.internal/ejer?v=1&bfe=${encodeURIComponent(bfe)}`);
+  const cache = typeof caches !== "undefined" ? caches.default : null;
+  if (cache) {
+    const hit = await cache.match(nøgle);
+    if (hit) return hit.json();
+  }
   try {
     const r = await fetch(`https://api.matriklen.dk/api/v3.2/BfeEjer?bfe=${encodeURIComponent(bfe)}`, {
       headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" },
@@ -113,7 +122,7 @@ async function hentEjere(bfe) {
       const note = raa[0] && raa[0].navn;
       return note ? { note } : null;
     }
-    return {
+    const ud = {
       antal: rigtige.length,
       liste: rigtige.map((e) => ({
         navn: e.navn ?? null,
@@ -124,6 +133,12 @@ async function hentEjere(bfe) {
         tinglysningsdato: e.tinglysningsdato ?? null,
       })),
     };
+    if (cache) {
+      await cache.put(nøgle, new Response(JSON.stringify(ud), {
+        headers: { "Cache-Control": "max-age=604800", "Content-Type": "application/json" },
+      }));
+    }
+    return ud;
   } catch (e) {
     return null;
   }
@@ -150,7 +165,8 @@ async function ejereBatch(bfeListe) {
       }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(8, kø.length) }, arbejd));
+  // Tre ad gangen: matriklen.dk afviser bursts, og vi vil ikke belaste dem unoedigt.
+  await Promise.all(Array.from({ length: Math.min(3, kø.length) }, arbejd));
   return ud;
 }
 
