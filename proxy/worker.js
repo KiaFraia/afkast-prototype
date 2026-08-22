@@ -32,6 +32,7 @@ const ANVENDELSE = { 110: "Stuehus til landbrug", 120: "Fritliggende enfamiliesh
 const EJERFORHOLD = { 10: "Privatpersoner", 20: "Alment boligselskab", 30: "Aktie-/anpartsselskab", 40: "Forening/legat/selvejende institution", 41: "Privat andelsboligforening", 50: "Staten", 60: "Region", 70: "Kommune", 80: "Andet", 90: "Ikke fastlagt", 99: "Ukendt" };
 const EJENDOMSTYPE = { 1: "Samlet fast ejendom", 2: "Bygning på fremmed grund", 3: "Ejerlejlighed" };
 const AKTIV_STATUS = ["6", "7"]; // 6=Opført, 7=Gældende
+const EJERE_MAKS = 80; // loft pr. batch-kald, så et vidt kortudsnit ikke vælter backenden
 
 // origin gives eksplicit med hver gang — en modulvariabel ville kunne blive
 // overskrevet af et samtidigt kald og sende den forkerte origin-header retur.
@@ -119,6 +120,25 @@ async function hentEjere(bfe) {
   } catch (e) {
     return null;
   }
+}
+
+// Slår ejere op for flere BFE-numre i ét kald, så kortet kan farve matrikler
+// efter ejerforhold uden at fyre hundredvis af requests af fra browseren.
+async function ejereBatch(bfeListe) {
+  const kø = bfeListe.slice(0, EJERE_MAKS);
+  const ud = {};
+  let i = 0;
+  async function arbejd() {
+    while (i < kø.length) {
+      const b = kø[i++];
+      const e = await hentEjere(b);
+      if (e && e.liste && e.liste.length) {
+        ud[b] = { ejerforhold: e.liste[0].ejerforhold, type: e.liste[0].type, overtagelsesdato: e.liste[0].overtagelsesdato };
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(8, kø.length) }, arbejd));
+  return ud;
 }
 
 async function jordstykkeInfo(js) {
@@ -343,6 +363,17 @@ export default {
     const o = tilladtOrigin(request);
     if (request.method === "OPTIONS") return new Response(null, { headers: cors(o) });
     const url = new URL(request.url);
+
+    if (request.method === "GET" && url.pathname === "/ejere") {
+      const bfe = (url.searchParams.get("bfe") || "")
+        .split(",").map((x) => x.trim()).filter((x) => /^\d+$/.test(x));
+      if (!bfe.length) return json({}, 200, o);
+      try {
+        return json(await ejereBatch(bfe), 200, o);
+      } catch (e) {
+        return json({ error: (e && e.message) || "ejeropslag fejlede" }, 502, o);
+      }
+    }
 
     if (request.method === "GET" && url.pathname === "/ejendom") {
       if (!env.DAF_USER || !env.DAF_PASS) return json({ error: "server missing DAF_USER/DAF_PASS" }, 500, o);

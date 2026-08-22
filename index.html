@@ -423,7 +423,7 @@
   });
 
   /* ---- Map ---- */
-  var map=null, markers={}, markerLayer=null, sidsteHits=null;
+  var map=null, markers={}, markerLayer=null;
 
   // Ortofoto: med en gratis Dataforsyningen-nøgle bruges det officielle danske
   // ortofoto (12,5 cm). Uden nøgle bruges Esri's luftfoto, så kortet altid virker.
@@ -594,6 +594,61 @@
       .catch(function(err){ if(err.name==="AbortError") return; matrikelLast=null; matrikelHint("Kunne ikke hente matrikelskel."); });
   }
 
+  /* ---- Farv matrikler efter ejerskabsfilteret ----
+     Ejerforhold findes kun pr. BFE-nummer, så det hentes samlet gennem worker'en.
+     Ved brede kortudsnit er der for mange matrikler til at det giver mening. */
+  var MATRIKEL_EJER_MAKS = 80;
+  var ejerCache = {}, ejerReq = null;
+
+  function markerEfterEjer(){
+    if(!matrikelLayer) return;
+    var oensket = $("f-ownertype") ? $("f-ownertype").value : "";
+    var lag = [];
+    matrikelLayer.eachLayer(function(g){ if(g.eachLayer) g.eachLayer(function(l){ if(l.feature) lag.push(l); }); });
+    if(!lag.length) return;
+
+    if(!oensket){ lag.forEach(function(l){ l.setStyle(matrikelStyle()); }); return; }
+
+    var bfe = lag.map(function(l){ return l.feature.properties.bfenummer; })
+                 .filter(function(b){ return b && ejerCache[b]===undefined; });
+    var unikke = Array.from(new Set(bfe));
+
+    if(unikke.length > MATRIKEL_EJER_MAKS){
+      matrikelHint(lag.length+" jordstykker · zoom ind for at markere efter ejerskab (maks "+MATRIKEL_EJER_MAKS+")");
+      return;
+    }
+    if(!unikke.length){ farvlag(lag, oensket); return; }
+
+    if(ejerReq) ejerReq.abort();
+    ejerReq = new AbortController();
+    matrikelHint("Slår ejerforhold op for "+unikke.length+" ejendomme…");
+    fetch(PROXY_URL+"/ejere?bfe="+unikke.join(","), {signal:ejerReq.signal})
+      .then(function(r){ return r.ok? r.json() : {}; })
+      .then(function(svar){
+        unikke.forEach(function(b){ ejerCache[b] = svar[b] || null; });
+        farvlag(lag, oensket);
+      })
+      .catch(function(err){ if(err.name!=="AbortError") matrikelHint("Kunne ikke hente ejerforhold."); });
+  }
+
+  function erPrivat(e){ return !!e && /privatperson/i.test(e.ejerforhold||""); }
+
+  function farvlag(lag, oensket){
+    var traf=0;
+    lag.forEach(function(l){
+      var e = ejerCache[l.feature.properties.bfenummer];
+      var match = e && (oensket==="Privatperson" ? erPrivat(e) : !erPrivat(e));
+      if(match){
+        traf++;
+        l.setStyle({color:"#dc2626", weight:2.5, opacity:1, fillColor:"#dc2626", fillOpacity:.28});
+        l.bringToFront();
+      } else {
+        l.setStyle({color:matrikelColor, weight:1, opacity:.35, fillColor:matrikelColor, fillOpacity:.02});
+      }
+    });
+    matrikelHint(traf+" af "+lag.length+" jordstykker matcher \u201d"+oensket+"\u201d · markeret med rødt");
+  }
+
   function drawMatrikel(gj){
     matrikelLayer.clearLayers();
     var base=matrikelStyle();
@@ -610,6 +665,7 @@
       }
     }).addTo(matrikelLayer);
     matrikelHint((gj.features||[]).length+" jordstykker · klik et for matrikelnr., areal og BFE-nummer");
+    markerEfterEjer();
   }
   function renderMarkers(list){
     if(!map) return;
@@ -622,17 +678,6 @@
         '<button onclick="openBiz('+d.id+')" style="margin-top:6px; cursor:pointer; border:1px solid #1763d1; background:#fff; color:#1763d1; border-radius:8px; padding:5px 10px;">Business case</button>');
       m.addTo(markerLayer); markers[d.id]=m;
     });
-
-    // Flyt kortet hen til resultaterne — men kun når filtrene faktisk giver et
-    // andet sæt. Ellers ville kortet også hoppe hver gang man gemmer et lead.
-    var noegle = list.map(function(o){ return o.p.id; }).join(",");
-    if(noegle !== sidsteHits){
-      sidsteHits = noegle;
-      if(list.length){
-        var b = L.latLngBounds(list.map(function(o){ return [o.p.lat, o.p.lng]; }));
-        map.fitBounds(b, {padding:[36,36], maxZoom:14});
-      }
-    }
   }
   function focusMap(id){ if(!map) return; var d=byId(id); map.setView([d.lat,d.lng], 13); if(markers[id]) markers[id].openPopup(); }
 
@@ -643,6 +688,7 @@
     ["f-region","f-ownertype","f-age","f-lives","f-props","f-tenure","f-price","f-type","f-units","f-area"].forEach(function(id){
       $(id).addEventListener("input", renderDeals);
     });
+    $("f-ownertype").addEventListener("input", markerEfterEjer);
     $("f-reset").addEventListener("click", function(){
       $("f-region").value=""; $("f-ownertype").value=""; $("f-age").value=0; $("f-lives").value="";
       $("f-props").value=1; $("f-tenure").value=0; $("f-price").value=7000000; $("f-type").value=""; $("f-units").value=1; $("f-area").value=0;
