@@ -736,43 +736,62 @@
       .then(function(l){ POSTNUMRE=l.filter(function(x){ return x.bbox; }); })
       .catch(function(){});
 
-    function visForslag(){
-      var q=by.value.trim().toLowerCase();
-      var valgtKom=kom.value;
-      // Tomt felt: vis listen alligevel, saa man kan vaelge uden at skrive.
-      // Er en kommune valgt, vises dens byer — ellers de foerste alfabetisk.
-      var traf=POSTNUMRE.filter(function(x){
-        if(valgtKom && !(x.kommuner||[]).some(function(k){ return k.kode===valgtKom; })) return false;
-        if(!q) return true;
-        return x.navn.toLowerCase().indexOf(q)===0 || x.nr.indexOf(q)===0;
-      }).sort(function(a,b){ return a.navn.localeCompare(b.navn,"da"); }).slice(0, q? 10 : (valgtKom? 40 : 0));
-      // Tomt felt uden kommune: en alfabetisk liste fra Agedrup hjaelper ingen.
-      if(!q && !valgtKom){
-        sugg.innerHTML = '<div class="lk-tom">Vælg en kommune, eller skriv de første bogstaver</div>';
-        sugg.style.display="block"; return;
-      }
-      if(!traf.length){
-        sugg.innerHTML = '<div class="lk-tom">Ingen by matcher</div>';
-        sugg.style.display="block"; return;
-      }
-      sugg.innerHTML = traf.map(function(x){
-        return '<div data-nr="'+x.nr+'">'+x.navn+'<span class="lk-type">'+x.nr+'</span></div>';
-      }).join("");
-      sugg.querySelectorAll("div").forEach(function(el){
-        el.addEventListener("click", function(){
-          var x=POSTNUMRE.filter(function(y){ return y.nr===el.getAttribute("data-nr"); })[0];
-          if(!x) return;
-          by.value = x.navn+" ("+x.nr+")";
-          sugg.style.display="none";
-          zoomTil(x, 16);   // byens centrum — matrikler fremme, soegningen koerer
-        });
+    // Postnumre grupperes paa bynavn. Koebenhavn kommune har 397 postnumre, men
+    // kun 17 bynavne — en liste med "Koebenhavn K" 397 gange hjaelper ingen.
+    function byerFor(valgtKom, q){
+      var grupper={};
+      POSTNUMRE.forEach(function(x){
+        if(valgtKom && !(x.kommuner||[]).some(function(k){ return k.kode===valgtKom; })) return;
+        if(q && x.navn.toLowerCase().indexOf(q)!==0 && x.nr.indexOf(q)!==0) return;
+        (grupper[x.navn]=grupper[x.navn]||[]).push(x);
       });
+      return Object.keys(grupper).sort(function(a,b){ return a.localeCompare(b,"da"); })
+        .map(function(navn){
+          var d=grupper[navn].sort(function(a,b){ return a.nr.localeCompare(b.nr); });
+          var lon=0, lat=0, n=0;
+          d.forEach(function(x){ if(x.visueltcenter){ lon+=x.visueltcenter[0]; lat+=x.visueltcenter[1]; n++; } });
+          return { navn:navn,
+                   nummer: d.length>1 ? d[0].nr+"–"+d[d.length-1].nr : d[0].nr,
+                   visueltcenter: n? [lon/n, lat/n] : null,
+                   bbox: d[0].bbox };
+        });
+    }
+
+    var byListe=[];
+    function visForslag(){
+      var q=by.value.trim().toLowerCase(), valgtKom=kom.value;
+      // Naar en by er valgt staar dens navn i feltet som "Nysted (4880)". Det
+      // maa ikke taelle som en soegning, ellers filtreres listen ned til den ene.
+      if(/\(\d/.test(by.value)) q="";
+      byListe = byerFor(valgtKom, q);
+      // Ingen graense: alle byer i kommunen skal kunne ses. Listen ruller selv.
+      if(!byListe.length){
+        sugg.innerHTML='<div class="lk-tom">Ingen by starter med «'+by.value.trim()+'»</div>';
+        sugg.style.display="block"; return;
+      }
+      sugg.innerHTML = byListe.map(function(x,i){
+        return '<div data-i="'+i+'">'+x.navn+'<span class="lk-type">'+x.nummer+'</span></div>';
+      }).join("");
       sugg.style.display="block";
     }
+
+    // Én lytter paa listen frem for én pr. raekke — uden kommune er der ~700 byer.
+    sugg.addEventListener("click", function(ev){
+      var el=ev.target.closest("div[data-i]");
+      if(!el) return;
+      var x=byListe[+el.getAttribute("data-i")];
+      if(!x) return;
+      by.value = x.navn+" ("+x.nummer+")";
+      sugg.style.display="none";
+      zoomTil(x, 16);   // byens centrum — matrikler fremme, soegningen koerer
+    });
+
     by.addEventListener("input", visForslag);
     // Skifter man kommune, skal listen afspejle den med det samme
     kom.addEventListener("change", function(){ if(document.activeElement===by) visForslag(); });
-    by.addEventListener("focus", visForslag);
+    // Marker det valgte navn ved fokus, saa naeste bogstav erstatter det i
+    // stedet for at havne efter "Nysted (4880)".
+    by.addEventListener("focus", function(){ by.select(); visForslag(); });
     document.addEventListener("click", function(e){ if(!e.target.closest(".lk-wrap")) sugg.style.display="none"; });
   }
 
