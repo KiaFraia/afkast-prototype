@@ -175,7 +175,7 @@ async function ejereBatch(bfeListe) {
 // licenseret API vi har adgang til, saa volumen er i orden her — modsat
 // matriklen.dk, der er en intern backend uden aftale om programmatisk brug.
 async function bbrForJordstykke(featureid, bfe, env) {
-  const nøgle = new Request(`https://cache.internal/bbr?v=2&js=${encodeURIComponent(featureid)}&b=${encodeURIComponent(bfe || "")}`);
+  const nøgle = new Request(`https://cache.internal/bbr?v=3&js=${encodeURIComponent(featureid)}&b=${encodeURIComponent(bfe || "")}`);
   const cache = typeof caches !== "undefined" ? caches.default : null;
   if (cache) {
     const hit = await cache.match(nøgle);
@@ -199,7 +199,18 @@ async function bbrForJordstykke(featureid, bfe, env) {
       ejendomstype,
       anvendelser: anv,
       kategori: boligKategori(anv),
-      opført: aktive.map((b) => b.byg026Opførelsesår).filter(Boolean).sort()[0] ?? null,
+      // Hovedbygningens aar, ikke garagens. Sorteret numerisk — .sort() uden
+      // komparator sorterer som tekst. Aarstal under 1700 er BBR-stoej.
+      opført: (() => {
+        const gyldige = aktive.filter((b) => b.byg026Opførelsesår >= 1700);
+        if (!gyldige.length) return null;
+        const medBolig = gyldige.filter((b) => b.byg039BygningensSamledeBoligAreal > 0);
+        const kilde = medBolig.length ? medBolig : gyldige;
+        return kilde.sort((a, b) =>
+          (b.byg039BygningensSamledeBoligAreal || 0) - (a.byg039BygningensSamledeBoligAreal || 0)
+          || a.byg026Opførelsesår - b.byg026Opførelsesår
+        )[0].byg026Opførelsesår;
+      })(),
       boligArealM2: sumFelt(aktive, "byg039BygningensSamledeBoligAreal"),
       bygningsArealM2: sumFelt(aktive, "byg038SamletBygningsareal"),
       antalBygninger: aktive.length,
