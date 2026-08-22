@@ -154,7 +154,7 @@
   .kcard-t + .kinfo{border-top:none;}
   .kinfo .kk{font-size:12px; color:var(--faint);}
   .kinfo .kv{font-size:14.5px; font-weight:500; margin-top:2px;}
-  .dgrid{display:grid; grid-template-columns:1fr 430px; gap:20px; align-items:start;}
+  .dgrid{display:grid; grid-template-columns:minmax(0,640px) 1fr; gap:20px; align-items:start;}
   .dcol{display:grid; gap:16px; min-width:0;}
   .boxes{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;}
   @media(max-width:1180px){ .boxes{grid-template-columns:1fr;} }
@@ -171,9 +171,11 @@
   .kglabel{grid-column:1/-1; font-size:12.5px; color:var(--muted); margin-bottom:-10px;}
   .knote{padding:13px 18px; border-top:1px solid var(--line); font-size:12.5px; color:var(--faint);}
   .kcard-t + .knote{border-top:none;}
-  .dmap{height:330px; z-index:1;}
+  /* Kortet foelger med ned og fylder resten af skaermen */
+  .dmapkort{position:sticky; top:78px;}
+  .dmap{height:calc(100vh - 210px); min-height:420px; z-index:1;}
   .dmap-note{padding:10px 16px; font-size:12.5px; color:var(--faint); border-top:1px solid var(--line);}
-  @media(max-width:980px){ .dgrid{grid-template-columns:1fr;} }
+  @media(max-width:980px){ .dgrid{grid-template-columns:1fr;} .dmapkort{position:static;} .dmap{height:340px; min-height:0;} }
   /* pipeline */
   .board{display:grid; grid-template-columns:repeat(6,1fr); gap:12px;}
   .col{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:10px; min-height:120px;}
@@ -1014,7 +1016,7 @@
             '<div class="knote" id="enheder-note"></div>'+
           '</div>' : '')+
         '</div>'+
-        '<div class="kcard">'+
+        '<div class="kcard dmapkort">'+
           '<div id="detail-map" class="dmap"></div>'+
           '<div class="dmap-note" id="dmap-note"></div>'+
         '</div>'+
@@ -1097,6 +1099,8 @@
       tegnNaboMatrikler();
     });
     setTimeout(function(){ if(dMap) dMap.invalidateSize(); }, 60);
+    // hoejden er bundet til vindueshoejden, saa Leaflet skal maale om ved resize
+    window.addEventListener("resize", function(){ if(dMap) dMap.invalidateSize(); });
 
     // Naboerne følger kortet, så de også dukker op når man panorerer væk
     dNaboGeo=null; dSidst=null; dPopupAaben=false;
