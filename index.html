@@ -270,8 +270,14 @@
       <div class="card fpanel">
         <div class="fsection">
           <h4>Lokation</h4>
-          <div class="fld"><label>Region</label><select id="f-region"><option value="">Alle regioner</option></select></div>
-          <div class="fld"><label>Kommune</label><select id="f-kommune"><option value="">Alle kommuner</option></select></div>
+          <div class="fld"><label>Region</label>
+            <div class="lk-wrap"><input id="f-region" type="text" autocomplete="off" data-slags="region" placeholder="Alle regioner">
+            <div id="f-region-sugg" class="lk-sugg"></div></div>
+          </div>
+          <div class="fld"><label>Kommune</label>
+            <div class="lk-wrap"><input id="f-kommune" type="text" autocomplete="off" data-slags="kommune" placeholder="Alle kommuner">
+            <div id="f-kommune-sugg" class="lk-sugg"></div></div>
+          </div>
           <div class="fld"><label>By / postnummer</label>
             <div class="lk-wrap"><input id="f-by" type="text" autocomplete="off" placeholder="Skriv en by, fx Nysted">
             <div id="f-by-sugg" class="lk-sugg"></div></div>
@@ -431,7 +437,7 @@
   // ortofoto (12,5 cm). Uden nøgle bruges Esri's luftfoto, så kortet altid virker.
   // Nøgle hentes gratis på dataforsyningen.dk → Min side → Token.
   var DAF_TOKEN = "";
-  var MATRIKEL_MIN_ZOOM = 15;
+  var MATRIKEL_MIN_ZOOM = 15, omraadeVaelgere = null;
   // Vi viser kun danske ejendomme, saa kortet skal heller ikke kunne forlade
   // landet. Rammen daekker Skagen i nord, Gedser i syd, Blaavand i vest og
   // Bornholm i oest, med lidt luft omkring.
@@ -679,70 +685,103 @@
     var b = o.bbox;
     if(b && b.length===4){ map.setView([(b[1]+b[3])/2, (b[0]+b[2])/2], zoom); }
   }
-  function fyldValg(el, liste, tom){
-    el.innerHTML = '<option value="">'+tom+'</option>' +
-      liste.map(function(o){ return '<option value="'+o.v+'">'+o.t+'</option>'; }).join("");
+
+  // Én vaelger: klik for at se hele listen, eller skriv forbogstaver for at
+  // indsnaevre den. Region, kommune og by deler denne, saa de tre opfoerer sig
+  // ens. Emnerne hentes ved hvert tegn, saa kommunelisten foelger regionen.
+  function vaelgerliste(input, sugg, hentEmner, vedValg, gruppe){
+    var vist=[], mig;
+    function tegn(){
+      var raa=input.value.trim();
+      // Naar noget er valgt staar navnet i feltet. Det maa ikke filtrere listen
+      // ned til sig selv — ellers kan man ikke se de oevrige muligheder igen.
+      var q = (input.dataset.valgt && raa===input.dataset.tekst) ? "" : raa.toLowerCase();
+      vist = hentEmner().filter(function(e){
+        if(!q) return true;
+        // Alias fanger det navn man rent faktisk skriver: alle regioner hedder
+        // "Region ...", saa "m" skal finde Midtjylland.
+        return e.navn.toLowerCase().indexOf(q)===0
+            || (e.alias||"").toLowerCase().indexOf(q)===0
+            || (e.nummer||"").indexOf(q)===0;
+      });
+      if(!vist.length){
+        sugg.innerHTML='<div class="lk-tom">Ingen '+(input.dataset.slags||"")+' starter med «'+raa+'»</div>';
+        sugg.style.display="block"; return;
+      }
+      sugg.innerHTML = vist.map(function(e,i){
+        return '<div data-i="'+i+'">'+e.navn+(e.nummer? '<span class="lk-type">'+e.nummer+'</span>':'')+'</div>';
+      }).join("");
+      sugg.style.display="block";
+    }
+    function saet(e){
+      input.value = e ? e.navn+(e.nummer? " ("+e.nummer+")" : "") : "";
+      input.dataset.tekst = input.value;
+      input.dataset.valgt = e ? e.vaerdi : "";
+    }
+    // Én lytter paa listen frem for én pr. raekke — uden valgt kommune er der
+    // 605 byer, og uden valgt region 98 kommuner.
+    sugg.addEventListener("click", function(ev){
+      var el=ev.target.closest("div[data-i]"); if(!el) return;
+      var e=vist[+el.getAttribute("data-i")]; if(!e) return;
+      saet(e); sugg.style.display="none"; vedValg(e);
+    });
+    input.addEventListener("input", function(){ input.dataset.valgt=""; aabn(); });
+    input.addEventListener("focus", function(){ input.select(); aabn(); });
+    // Kun én liste ad gangen. Uden det bliver regionens liste staaende hen over
+    // kommunefeltet, naar man klikker videre til det.
+    function aabn(){
+      (gruppe||[]).forEach(function(v){ if(v!==mig) v.luk(); });
+      tegn();
+    }
+    mig = { saet:saet, luk:function(){ sugg.style.display="none"; },
+            valgt:function(){ return input.dataset.valgt||""; } };
+    if(gruppe) gruppe.push(mig);
+    return mig;
   }
 
   function initOmraade(){
     var reg=$("f-region"), kom=$("f-kommune"), by=$("f-by");
     if(!reg||!kom||!by) return;
 
+    var REGIONER=[], POSTNUMRE=[];
+
     fetch("https://api.dataforsyningen.dk/kommuner")
       .then(function(r){ return r.ok? r.json():[]; })
       .then(function(liste){
         KOMMUNER = liste.filter(function(k){ return k.region && k.bbox; });
-        var regioner = Array.from(new Set(KOMMUNER.map(function(k){ return k.region.navn; }))).sort();
-        fyldValg(reg, regioner.map(function(n){ return {v:n, t:n}; }), "Alle regioner");
-        opdaterKommuner();
+        var navne = Array.from(new Set(KOMMUNER.map(function(k){ return k.region.navn; })))
+                         .sort(function(a,b){ return a.localeCompare(b,"da"); });
+        REGIONER = navne.map(function(n){
+          // Gennemsnittet af kommunernes visuelle centre rammer land — rammens
+          // midte ville ofte lande i vandet.
+          var pkt=KOMMUNER.filter(function(k){ return k.region.navn===n; })
+                          .map(function(k){ return k.visueltcenter; }).filter(Boolean);
+          var lon=0, lat=0;
+          pkt.forEach(function(c){ lon+=c[0]; lat+=c[1]; });
+          return { navn:n, vaerdi:n, alias:n.replace(/^Region\s+/i,""),
+                   visueltcenter: pkt.length? [lon/pkt.length, lat/pkt.length] : null };
+        });
       }).catch(function(){});
 
-    function opdaterKommuner(){
-      var r=reg.value;
-      var k=KOMMUNER.filter(function(x){ return !r || x.region.navn===r; })
-        .sort(function(a,b){ return a.navn.localeCompare(b.navn,"da"); });
-      fyldValg(kom, k.map(function(x){ return {v:x.kode, t:x.navn}; }), "Alle kommuner");
-    }
-
-    reg.addEventListener("change", function(){
-      opdaterKommuner();
-      var valgt=KOMMUNER.filter(function(x){ return x.region.navn===reg.value; });
-      if(valgt.length){
-        // Gennemsnittet af kommunernes visuelle centre rammer land — rammens
-        // midte ville ofte lande i vandet.
-        var pkt=valgt.map(function(x){ return x.visueltcenter; }).filter(Boolean);
-        if(pkt.length){
-          var lon=pkt.reduce(function(a,c){ return a+c[0]; },0)/pkt.length;
-          var lat=pkt.reduce(function(a,c){ return a+c[1]; },0)/pkt.length;
-          map.setView([lat, lon], 10);
-        }
-      }
-      by.value=""; sugg.style.display="none";
-    });
-
-    kom.addEventListener("change", function(){
-      var k=KOMMUNER.filter(function(x){ return x.kode===kom.value; })[0];
-      // MATRIKEL_MIN_ZOOM er 15. Under det vises ingen matrikler og soegningen
-      // koerer ikke, saa vi gaar lige over graensen med det samme.
-      if(k) zoomTil(k, 15);
-      by.value=""; sugg.style.display="none";
-    });
-
-    // Bysoegning paa tværs af landet. Postnumrene hentes én gang og filtreres
-    // lokalt, saa hvert tastetryk ikke koster et kald.
-    var POSTNUMRE=[], sugg=$("f-by-sugg");
     fetch("https://api.dataforsyningen.dk/postnumre")
       .then(function(r){ return r.ok? r.json():[]; })
       .then(function(l){ POSTNUMRE=l.filter(function(x){ return x.bbox; }); })
       .catch(function(){});
 
+    function kommunerFor(region){
+      return KOMMUNER.filter(function(k){ return !region || k.region.navn===region; })
+        .sort(function(a,b){ return a.navn.localeCompare(b.navn,"da"); })
+        .map(function(k){
+          return { navn:k.navn, vaerdi:k.kode, visueltcenter:k.visueltcenter, bbox:k.bbox };
+        });
+    }
+
     // Postnumre grupperes paa bynavn. Koebenhavn kommune har 397 postnumre, men
     // kun 17 bynavne — en liste med "Koebenhavn K" 397 gange hjaelper ingen.
-    function byerFor(valgtKom, q){
+    function byerFor(valgtKom){
       var grupper={};
       POSTNUMRE.forEach(function(x){
         if(valgtKom && !(x.kommuner||[]).some(function(k){ return k.kode===valgtKom; })) return;
-        if(q && x.navn.toLowerCase().indexOf(q)!==0 && x.nr.indexOf(q)!==0) return;
         (grupper[x.navn]=grupper[x.navn]||[]).push(x);
       });
       return Object.keys(grupper).sort(function(a,b){ return a.localeCompare(b,"da"); })
@@ -750,49 +789,31 @@
           var d=grupper[navn].sort(function(a,b){ return a.nr.localeCompare(b.nr); });
           var lon=0, lat=0, n=0;
           d.forEach(function(x){ if(x.visueltcenter){ lon+=x.visueltcenter[0]; lat+=x.visueltcenter[1]; n++; } });
-          return { navn:navn,
+          return { navn:navn, vaerdi:navn,
                    nummer: d.length>1 ? d[0].nr+"–"+d[d.length-1].nr : d[0].nr,
-                   visueltcenter: n? [lon/n, lat/n] : null,
-                   bbox: d[0].bbox };
+                   visueltcenter: n? [lon/n, lat/n] : null, bbox:d[0].bbox };
         });
     }
 
-    var byListe=[];
-    function visForslag(){
-      var q=by.value.trim().toLowerCase(), valgtKom=kom.value;
-      // Naar en by er valgt staar dens navn i feltet som "Nysted (4880)". Det
-      // maa ikke taelle som en soegning, ellers filtreres listen ned til den ene.
-      if(/\(\d/.test(by.value)) q="";
-      byListe = byerFor(valgtKom, q);
-      // Ingen graense: alle byer i kommunen skal kunne ses. Listen ruller selv.
-      if(!byListe.length){
-        sugg.innerHTML='<div class="lk-tom">Ingen by starter med «'+by.value.trim()+'»</div>';
-        sugg.style.display="block"; return;
-      }
-      sugg.innerHTML = byListe.map(function(x,i){
-        return '<div data-i="'+i+'">'+x.navn+'<span class="lk-type">'+x.nummer+'</span></div>';
-      }).join("");
-      sugg.style.display="block";
-    }
+    // MATRIKEL_MIN_ZOOM er 15. Under det vises ingen matrikler og soegningen
+    // koerer ikke, saa kommune og by lander lige over graensen.
+    var gruppe=[];
+    var vRegion = vaelgerliste(reg, $("f-region-sugg"), function(){ return REGIONER; },
+      function(e){ vKommune.saet(null); vBy.saet(null); zoomTil(e, 10); }, gruppe);
+    var vKommune = vaelgerliste(kom, $("f-kommune-sugg"), function(){ return kommunerFor(vRegion.valgt()); },
+      function(e){ vBy.saet(null); zoomTil(e, 15); }, gruppe);
+    var vBy = vaelgerliste(by, $("f-by-sugg"), function(){ return byerFor(vKommune.valgt()); },
+      function(e){ zoomTil(e, 16); }, gruppe);
 
-    // Én lytter paa listen frem for én pr. raekke — uden kommune er der ~700 byer.
-    sugg.addEventListener("click", function(ev){
-      var el=ev.target.closest("div[data-i]");
-      if(!el) return;
-      var x=byListe[+el.getAttribute("data-i")];
-      if(!x) return;
-      by.value = x.navn+" ("+x.nummer+")";
-      sugg.style.display="none";
-      zoomTil(x, 16);   // byens centrum — matrikler fremme, soegningen koerer
+    omraadeVaelgere = { nulstil: function(){
+      vRegion.saet(null); vKommune.saet(null); vBy.saet(null);
+      vRegion.luk(); vKommune.luk(); vBy.luk();
+    } };
+
+    document.addEventListener("click", function(e){
+      if(e.target.closest(".lk-wrap")) return;
+      gruppe.forEach(function(v){ v.luk(); });
     });
-
-    by.addEventListener("input", visForslag);
-    // Skifter man kommune, skal listen afspejle den med det samme
-    kom.addEventListener("change", function(){ if(document.activeElement===by) visForslag(); });
-    // Marker det valgte navn ved fokus, saa naeste bogstav erstatter det i
-    // stedet for at havne efter "Nysted (4880)".
-    by.addEventListener("focus", function(){ by.select(); visForslag(); });
-    document.addEventListener("click", function(e){ if(!e.target.closest(".lk-wrap")) sugg.style.display="none"; });
   }
 
 
@@ -1066,7 +1087,7 @@
     $("f-reset").addEventListener("click", function(){
       $("f-ownertype").value=""; $("f-tenure").value=0;
       $("f-type").value=""; $("f-area").value=0; $("f-year").value=2025;
-      $("f-region").value=""; $("f-kommune").value=""; $("f-by").value="";
+      if(omraadeVaelgere) omraadeVaelgere.nulstil();
       renderDeals();
     });
     renderDeals();
