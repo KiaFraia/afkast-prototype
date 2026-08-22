@@ -270,7 +270,10 @@
           <h4>Lokation</h4>
           <div class="fld"><label>Region</label><select id="f-region"><option value="">Alle regioner</option></select></div>
           <div class="fld"><label>Kommune</label><select id="f-kommune"><option value="">Alle kommuner</option></select></div>
-          <div class="fld"><label>By / postnummer</label><select id="f-by"><option value="">Alle byer</option></select></div>
+          <div class="fld"><label>By / postnummer</label>
+            <div class="lk-wrap"><input id="f-by" type="text" autocomplete="off" placeholder="Skriv en by, fx Nysted">
+            <div id="f-by-sugg" class="lk-sugg"></div></div>
+          </div>
           <p class="asst-note" style="margin:0;">Vælg et område for at flytte kortet dertil. Søgningen dækker det synlige kortudsnit.</p>
         </div>
         <div class="fsection">
@@ -663,7 +666,6 @@
       var k=KOMMUNER.filter(function(x){ return !r || x.region.navn===r; })
         .sort(function(a,b){ return a.navn.localeCompare(b.navn,"da"); });
       fyldValg(kom, k.map(function(x){ return {v:x.kode, t:x.navn}; }), "Alle kommuner");
-      fyldValg(by, [], "Alle byer");
     }
 
     reg.addEventListener("change", function(){
@@ -680,29 +682,51 @@
     kom.addEventListener("change", function(){
       var k=KOMMUNER.filter(function(x){ return x.kode===kom.value; })[0];
       if(k) zoomTil(k.bbox);
-      fyldValg(by, [], "Alle byer");
-      if(!kom.value) return;
-      fetch("https://api.dataforsyningen.dk/postnumre?kommunekode="+encodeURIComponent(kom.value))
-        .then(function(r){ return r.ok? r.json():[]; })
-        .then(function(liste){
-          fyldValg(by, liste.filter(function(x){ return x.bbox; })
-            .sort(function(a,b){ return a.nr.localeCompare(b.nr); })
-            .map(function(x){ return {v:x.nr, t:x.nr+" "+x.navn}; }), "Alle byer");
-          by._data = liste;
-        }).catch(function(){});
     });
 
-    by.addEventListener("change", function(){
-      var p=(by._data||[]).filter(function(x){ return x.nr===by.value; })[0];
-      if(p) zoomTil(p.bbox);
-    });
+    // Bysoegning paa tværs af landet. Postnumrene hentes én gang og filtreres
+    // lokalt, saa hvert tastetryk ikke koster et kald.
+    var POSTNUMRE=[], sugg=$("f-by-sugg");
+    fetch("https://api.dataforsyningen.dk/postnumre")
+      .then(function(r){ return r.ok? r.json():[]; })
+      .then(function(l){ POSTNUMRE=l.filter(function(x){ return x.bbox; }); })
+      .catch(function(){});
+
+    function visForslag(){
+      var q=by.value.trim().toLowerCase();
+      if(!q){ sugg.style.display="none"; return; }
+      var valgtKom=kom.value;
+      var traf=POSTNUMRE.filter(function(x){
+        if(valgtKom && !(x.kommuner||[]).some(function(k){ return k.kode===valgtKom; })) return false;
+        return x.navn.toLowerCase().indexOf(q)===0 || x.nr.indexOf(q)===0;
+      }).sort(function(a,b){ return a.navn.localeCompare(b.navn,"da"); }).slice(0,10);
+      if(!traf.length){ sugg.style.display="none"; return; }
+      sugg.innerHTML = traf.map(function(x){
+        return '<div data-nr="'+x.nr+'">'+x.navn+'<span class="lk-type">'+x.nr+'</span></div>';
+      }).join("");
+      sugg.querySelectorAll("div").forEach(function(el){
+        el.addEventListener("click", function(){
+          var x=POSTNUMRE.filter(function(y){ return y.nr===el.getAttribute("data-nr"); })[0];
+          if(!x) return;
+          by.value = x.navn+" ("+x.nr+")";
+          sugg.style.display="none";
+          zoomTil(x.bbox);
+        });
+      });
+      sugg.style.display="block";
+    }
+    by.addEventListener("input", visForslag);
+    by.addEventListener("focus", visForslag);
+    document.addEventListener("click", function(e){ if(!e.target.closest(".lk-wrap")) sugg.style.display="none"; });
   }
 
 
   /* ---- Søg rigtige ejendomme i kortudsnittet ----
      Tre kald uanset antal matrikler: jordstykker og adgangsadresser fra DAWA,
      plus ét batch-opslag af ejere gennem worker'en. */
-  var SOEG_MAKS = 80, VIS_ANTAL = 50;
+  // Worker'en kan hoejst slaa 45 ejere op pr. kald (Cloudflares grænse paa 50
+  // udgaaende kald). Vi deler derfor op i bundter og koerer dem parallelt.
+  var SOEG_MAKS = 300, VIS_ANTAL = 50, BUNDT = 45, SAMTIDIGE_BUNDTER = 4;
   var visGraense = VIS_ANTAL, sidsteTraef = [];
 
   function adresserIUdsnit(c, radius){
@@ -719,6 +743,23 @@
         });
         return kort;
       }).catch(function(){ return {}; });
+  }
+
+  function hentEjereIBundter(bfeListe){
+    var bundter=[];
+    for(var i=0;i<bfeListe.length;i+=BUNDT) bundter.push(bfeListe.slice(i,i+BUNDT));
+    var samlet={}, n=0;
+    function tag(){
+      if(n>=bundter.length) return Promise.resolve();
+      var b=bundter[n++];
+      return fetch(PROXY_URL+"/ejere?bfe="+b.join(","))
+        .then(function(r){ return r.ok? r.json():{}; })
+        .catch(function(){ return {}; })
+        .then(function(svar){ Object.keys(svar).forEach(function(k){ samlet[k]=svar[k]; }); return tag(); });
+    }
+    var koer=[];
+    for(var k=0;k<Math.min(SAMTIDIGE_BUNDTER,bundter.length);k++) koer.push(tag());
+    return Promise.all(koer).then(function(){ return samlet; });
   }
 
   function beskedKort(t){ return '<div class="card"><div class="empty">'+t+'</div></div>'; }
@@ -747,7 +788,7 @@
 
     Promise.all([
       adresserIUdsnit(c, radius),
-      fetch(PROXY_URL+"/ejere?bfe="+bfeListe.join(",")).then(function(r){ return r.ok? r.json():{}; }).catch(function(){ return {}; })
+      hentEjereIBundter(bfeListe)
     ]).then(function(svar){
       var adr=svar[0], ejere=svar[1];
       Object.keys(ejere).forEach(function(b){ ejerCache[b]=ejere[b]; });
@@ -775,7 +816,7 @@
     traef.forEach(function(t){ ramt[t.pr.bfenummer]=1; });
     alle.forEach(function(l){
       if(ramt[l.feature.properties.bfenummer]){
-        l.setStyle({color:"#dc2626", weight:2.5, opacity:1, fillColor:"#dc2626", fillOpacity:.28});
+        l.setStyle({color:"#1763d1", weight:2.5, opacity:1, fillColor:"#1763d1", fillOpacity:.30});
         l.bringToFront();
       } else {
         l.setStyle({color:matrikelColor, weight:1, opacity:.35, fillColor:matrikelColor, fillOpacity:.02});
@@ -803,7 +844,10 @@
             '<span class="chip">Vurdering kræver VUR</span>'+
           '</div>'+
         '</div>'+
-        '<div class="acts"><button class="btn sm" data-adr="'+(t.adresse||"")+'">Se ejendom</button></div>'+
+        '<div class="acts">'+
+          '<button class="btn ghost sm" data-kort="'+t.pr.bfenummer+'">Vis på kort</button>'+
+          '<button class="btn sm" data-adr="'+(t.adresse||"")+'">Se ejendom</button>'+
+        '</div>'+
       '</div>';
     }).join("") +
     (sidsteTraef.length > visGraense
@@ -811,6 +855,16 @@
 
     box.querySelectorAll("[data-adr]").forEach(function(b){
       b.addEventListener("click", function(e){ e.stopPropagation(); var a=b.getAttribute("data-adr"); if(a) doLookup(a); });
+    });
+    box.querySelectorAll("[data-kort]").forEach(function(b){
+      b.addEventListener("click", function(e){
+        e.stopPropagation();
+        var t=sidsteTraef.filter(function(x){ return String(x.pr.bfenummer)===b.getAttribute("data-kort"); })[0];
+        if(!t||!t.lag) return;
+        map.fitBounds(t.lag.getBounds(), {padding:[60,60], maxZoom:19});
+        t.lag.openPopup();
+        $("map").scrollIntoView({block:"center", behavior:"smooth"});
+      });
     });
     box.querySelectorAll(".deal").forEach(function(el){
       el.addEventListener("click", function(){

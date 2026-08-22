@@ -36,7 +36,10 @@ const TAGDAEKNING = { 1: "Tagpap med lille hældning", 2: "Tagpap med stor hæld
 const VARME = { 1: "Fjernvarme/blokvarme", 2: "Centralvarme med én fyringsenhed", 3: "Ovn til fast og flydende brændsel", 5: "Varmepumpe", 6: "Centralvarme med to fyringsenheder", 7: "Elvarme", 8: "Gasradiator", 9: "Ingen varmeinstallation", 99: "Registreret på enheder" };
 const SUPPLVARME = { 0: "Ikke oplyst", 1: "Varmepumpe", 2: "Brændeovn med skorsten", 3: "Biopejs uden skorsten", 4: "Solvarmeanlæg", 5: "Pejs", 6: "Gasradiator", 7: "Elvarme", 10: "Biogasanlæg", 80: "Andet", 90: "Ingen" };
 const AKTIV_STATUS = ["6", "7"]; // 6=Opført, 7=Gældende
-const EJERE_MAKS = 80; // loft pr. batch-kald, så et vidt kortudsnit ikke vælter backenden
+// Cloudflare tillader 50 udgaaende kald pr. request paa gratis-planen, og vi
+// bruger ét pr. BFE. Over grænsen droppes resten lydloest, saa loftet ligger
+// bevidst under. Appen deler store forespoergsler op i flere kald.
+const EJERE_MAKS = 45;
 
 // origin gives eksplicit med hver gang — en modulvariabel ville kunne blive
 // overskrevet af et samtidigt kald og sende den forkerte origin-header retur.
