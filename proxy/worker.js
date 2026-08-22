@@ -334,7 +334,8 @@ async function buildProfile(query, env) {
 }
 
 async function cachedProfile(query, env) {
-  const key = new Request("https://cache.internal/ejendom?v=2&q=" + encodeURIComponent(query.trim().toLowerCase()));
+  // v tælles op når profilens felter ændres, ellers serveres gamle svar i 24 timer
+  const key = new Request("https://cache.internal/ejendom?v=3&q=" + encodeURIComponent(query.trim().toLowerCase()));
   const cache = typeof caches !== "undefined" ? caches.default : null;
   if (cache) {
     const hit = await cache.match(key);
