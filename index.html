@@ -922,7 +922,15 @@
         '<div class="main">'+
           '<div class="addr">'+(t.adresse || ("Matr.nr. "+t.pr.matrikelnr+" "+t.pr.ejerlavnavn))+'</div>'+
           '<div class="meta">'+(t.pr.kommunenavn||"")+' · '+nf.format(t.pr.registreretareal||0)+' m² grund'+
-            (t.enheder>1? ' · '+t.enheder+' adresser':'')+' · klik for detaljer</div>'+
+            (t.enheder>1? ' · '+t.enheder+' adresser':'')+
+            (t.bbr&&t.bbr.kategori? ' · '+t.bbr.kategori:'')+
+            (t.bbr&&t.bbr.boligArealM2? ' · '+nf.format(t.bbr.boligArealM2)+' m² bolig':'')+'</div>'+
+          '<div class="owner">'+
+            (t.e&&t.e.navn
+              ? t.e.navn+'<span style="color:var(--muted)">'+(t.e.ejerforhold? ' · '+t.e.ejerforhold:'')+
+                (t.aar? ' · '+(YEAR-t.aar)+' års ejertid · overtaget '+t.aar : '')+'</span>'
+              : '<span class="pop-dim">Ejer ikke hentet — matriklen.dk svarer ikke lige nu</span>')+
+          '</div>'+
         '</div>'+
         '<div class="acts">'+
           '<button class="btn ghost sm" data-kort="'+t.pr.bfenummer+'">Vis på kort</button>'+
