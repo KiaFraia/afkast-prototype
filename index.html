@@ -163,7 +163,7 @@
   .kcard-t .fine{font-weight:400; color:var(--muted); font-size:13px;}
   .kcard-t .lnk{margin-left:auto; font-weight:500; font-size:13.5px; color:var(--blue); background:none; border:none; cursor:pointer; padding:0;}
   .kcard-t .lnk:hover{text-decoration:underline;}
-  .kcard-t .kicon{display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:7px; background:var(--blue-bg); color:var(--blue-dark); font-size:13px;}
+  .kcard-t .kicon{display:inline-flex; align-items:center; justify-content:center; min-width:26px; height:26px; padding:0 5px; border-radius:7px; background:var(--blue-bg); color:var(--blue-dark); font-size:13px; font-weight:600; letter-spacing:.02em;}
   .kgrid{display:grid; grid-template-columns:1fr 1fr; gap:18px 22px; padding:16px 18px;}
   .kgrid + .kgrid{border-top:1px solid var(--line);}
   .kgrid .v{font-size:20px; font-weight:600; line-height:1.2;}
@@ -966,6 +966,42 @@
     // Ejernavn og handelshistorik er kildeafhængige. Manglende data hører hjemme
     // som en dæmpet note — ikke som et stort tal der ligner en værdi.
 
+
+    /* ---- BBR: bygninger og enheder ---- */
+    var bygRaekker = (d.bygninger||[]).map(function(b){
+      return '<tr>'+
+        '<td class="adr">'+(b.anvendelse||"–")+(b.nr!=null? ' <span class="pop-dim">nr. '+b.nr+'</span>' : '')+'</td>'+
+        '<td class="num">'+(b.opført||"–")+'</td>'+
+        '<td class="num">'+(b.bebyggetArealM2!=null? nf.format(b.bebyggetArealM2)+" m²":"–")+'</td>'+
+        '<td class="num">'+(b.samletBygningsarealM2!=null? nf.format(b.samletBygningsarealM2)+" m²":"–")+'</td>'+
+        '<td class="num">'+(b.boligarealM2!=null? nf.format(b.boligarealM2)+" m²":"–")+'</td>'+
+      '</tr>';
+    }).join("");
+
+    var bbrTal =
+      kfelt(antalByg||null, antalByg===1? "Bygning":"Bygninger")+
+      kfelt(bygAreal!=null? nf.format(bygAreal)+" m²":null, "Bygningsareal")+
+      kfelt(boligAreal!=null? nf.format(boligAreal)+" m²":null, "Beboelsesareal")+
+      kfelt(enh&&enh.erhvervArealM2!=null? nf.format(enh.erhvervArealM2)+" m²":null, "Erhvervsareal")+
+      kfelt(enh&&enh.bolig!=null? enh.bolig:null, "Beboelsesenheder")+
+      kfelt(enh&&enh.erhverv!=null? enh.erhverv:null, "Erhvervsenheder");
+
+    var bbrKort = (bbrTal || bygRaekker)
+      ? '<div class="kcard">'+
+          '<div class="kcard-t"><span class="kicon">BBR</span>Bygnings- og Boligregistret</div>'+
+          kblok(bbrTal)+
+          (bygRaekker
+            ? '<div class="ef-list" style="margin:0; border:none; border-radius:0;">'+
+                '<table class="etab"><thead><tr>'+
+                  '<th>Anvendelse</th><th class="num">Opført</th><th class="num">Bebygget areal</th>'+
+                  '<th class="num">Samlet bygningsareal</th><th class="num">Boligareal</th>'+
+                '</tr></thead><tbody>'+bygRaekker+'</tbody></table>'+
+              '</div>'
+            : '')+
+          (enh? '' : knote('Enhedsfordeling og erhvervsareal kræver BBR-enhedsopslag'))+
+        '</div>'
+      : '';
+
     $("detail-body").innerHTML =
       '<div class="dhead">'+
         '<div>'+
@@ -1009,6 +1045,7 @@
           '</div>'+
           '</div>'+
           (mangler.length? '<div class="mangler" style="margin:0; border:none; padding:0;"><b>Ikke koblet på endnu:</b> '+mangler.join(" · ")+'</div>' : '')+
+          bbrKort+
           (d.real&&d.matrikel? '<div class="kcard" id="enheder-kort" style="display:none;">'+
             '<div class="kcard-t"><span class="kicon">☰</span><span id="enheder-titel">Enheder på hovedejendommen</span>'+
             '<span class="fine" id="enheder-fine"></span></div>'+
