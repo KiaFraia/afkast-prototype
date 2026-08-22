@@ -54,6 +54,9 @@
   .fsection h4{margin:0 0 12px; font-size:12px; font-weight:600; color:var(--faint); text-transform:uppercase; letter-spacing:.04em;}
   .fld{margin-bottom:12px;}
   .fld label{display:block; font-size:13px; color:var(--muted); margin-bottom:4px;}
+  .fld-af{opacity:.55;}
+  .fld-af input{cursor:not-allowed;}
+  .fld-note{display:block; font-size:11.5px; color:var(--faint); margin-top:2px;}
   .fld .rowout{display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:2px;}
   .fld .rowout b{color:var(--ink); font-weight:600;}
   .fld select{width:100%; font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg2);}
@@ -287,7 +290,9 @@
         <div class="fsection">
           <h4>Ejerskab</h4>
           <div class="fld"><label>Ejerskabstype</label><select id="f-ownertype"><option value="">Alle</option><option>Privatperson</option><option>Selskab</option></select></div>
-          <div class="fld"><div class="rowout"><span>Ejertid (min. år)</span><b id="o-tenure">0</b></div><input id="f-tenure" type="range" min="0" max="50" step="1" value="0"></div>
+          <div class="fld fld-af"><div class="rowout"><span>Ejertid (min. år)</span><b id="o-tenure">0</b></div>
+            <input id="f-tenure" type="range" min="0" max="50" step="1" value="0" disabled>
+            <span class="fld-note">Kræver Ejerfortegnelsen. Ejeren vises på den enkelte ejendom.</span></div>
         </div>
         <div class="fsection">
           <h4>Ejendom</h4>
@@ -864,22 +869,6 @@
     return Promise.all(koer).then(function(){ return samlet; });
   }
 
-  function hentEjereIBundter(bfeListe){
-    var bundter=[];
-    for(var i=0;i<bfeListe.length;i+=BUNDT) bundter.push(bfeListe.slice(i,i+BUNDT));
-    var samlet={}, n=0;
-    function tag(){
-      if(n>=bundter.length) return Promise.resolve();
-      var b=bundter[n++];
-      return fetch(PROXY_URL+"/ejere?bfe="+b.join(","))
-        .then(function(r){ return r.ok? r.json():{}; })
-        .catch(function(){ return {}; })
-        .then(function(svar){ Object.keys(svar).forEach(function(k){ samlet[k]=svar[k]; }); return tag(); });
-    }
-    var koer=[];
-    for(var k=0;k<Math.min(SAMTIDIGE_BUNDTER,bundter.length);k++) koer.push(tag());
-    return Promise.all(koer).then(function(){ return samlet; });
-  }
 
   function beskedKort(t){ return '<div class="card"><div class="empty">'+t+'</div></div>'; }
 
@@ -904,21 +893,22 @@
     var c=map.getCenter(), radius=Math.min(Math.round(c.distanceTo(map.getBounds().getNorthEast())), 1200);
     var bfeListe=Array.from(new Set(medBfe.map(function(l){ return l.feature.properties.bfenummer; })));
 
-    var oensket=$("f-ownertype").value, minTid=+$("f-tenure").value,
+    var oensket=$("f-ownertype").value,
         oensketType=$("f-type").value, minAreal=+$("f-area").value, maxAar=+$("f-year").value;
 
     // Registrene slaas kun op naar et filter faktisk kraever dem. Uden filtre
     // koster det at flytte kortet ingen registeropslag: man ser hvor ejendommene
     // ligger, og henter resten ved at klikke paa en enkelt. Med 120 ejendomme i
     // udsnittet er forskellen 18 kald mod 1.
-    var brugEjer = minTid>0;                       // ejertid findes kun i matriklen
+    // Ejertid slaas ikke op her. Matriklen.dk er en intern backend uden aftale
+    // om programmatisk brug, og et opslag pr. ejendom pr. kortudsnit fik dem til
+    // at spaerre worker'en ude. Ejeren hentes i stedet paa detaljesiden, ét
+    // opslag ad gangen fra brugerens egen browser.
     var brugBbr  = !!(oensketType || minAreal>0 || maxAar<2025 || oensket);
-    var harFiltre = brugEjer || brugBbr;
+    var harFiltre = brugBbr;
 
     // Hent kun de ejere vi ikke har i forvejen. Uden det ville hvert filterskift
     // slaa alle ejendomme op igen — spild, og kaldene begynder at fejle.
-    var mangler = brugEjer
-      ? bfeListe.filter(function(b){ return ejerCache[b]===undefined; }) : [];
     var jsPar = {};
     medBfe.forEach(function(l){
       var q=l.feature.properties;
@@ -933,13 +923,10 @@
 
     Promise.all([
       adresserIUdsnit(c, radius),
-      mangler.length? hentEjereIBundter(mangler) : Promise.resolve({}),
       manglerBbr.length? hentBbrIBundter(manglerBbr) : Promise.resolve({})
     ]).then(function(svar){
       var adr=svar[0];
-      Object.keys(svar[1]).forEach(function(b){ ejerCache[b]=svar[1][b]; });
-      mangler.forEach(function(b){ if(ejerCache[b]===undefined) ejerCache[b]=null; });
-      Object.keys(svar[2]).forEach(function(i){ bbrCache[i]=svar[2][i]; });
+      Object.keys(svar[1]).forEach(function(i){ bbrCache[i]=svar[1][i]; });
       manglerBbr.forEach(function(x){ var i=x.split(":")[0]; if(bbrCache[i]===undefined) bbrCache[i]=null; });
       var ejere={};
       bfeListe.forEach(function(b){ if(ejerCache[b]) ejere[b]=ejerCache[b]; });
@@ -960,10 +947,6 @@
         if(oensket){
           if(!forhold) kanIkkeVurderes=true;
           else if((oensket==="Privatperson") !== /privatperson/i.test(forhold)) return;
-        }
-        if(minTid>0){
-          if(!aar) kanIkkeVurderes=true;
-          else if((YEAR-aar)<minTid) return;
         }
         // Worker'en svarer kun null naar opslaget slog fejl eller jordstykket
         // hverken har bygninger eller ejendomsrelation. Er der et svar, ved vi
@@ -1820,17 +1803,57 @@
     });
     document.addEventListener("click", function(e){ if(!e.target.closest(".lk-wrap")) box.style.display="none"; });
   }
+  /* ---- Ejere direkte fra matriklen.dk ----
+     Worker'en er spaerret ude af matriklen.dk, men de sender ACAO: * saa
+     browseren selv maa kalde. Det bruges kun her paa detaljesiden, ét opslag ad
+     gangen fra brugerens egen forbindelse — aldrig i soegningen over kortet.
+
+     Cache-Control er obligatorisk. Deres CDN cacher paa sti alene og ignorerer
+     bfe-parameteren: uden headeren fik tre forskellige BFE-numre samme ejer
+     retur. cache:"no-cache" faar browseren til selv at saette max-age=0, hvilket
+     virker — og udloeser i modsaetning til en egen header ingen preflight, som
+     deres OPTIONS-svar alligevel ikke ville bestaa. */
+  var EJERFORHOLD_KODE = {10:"Privatpersoner", 20:"Alment boligselskab", 30:"Aktie-/anpartsselskab",
+    40:"Forening/legat/selvejende institution", 41:"Privat andelsboligforening", 50:"Staten",
+    60:"Region", 70:"Kommune", 80:"Andet", 90:"Ikke fastlagt", 99:"Ukendt"};
+
+  function hentEjerDirekte(bfe){
+    if(!bfe) return Promise.resolve(null);
+    return fetch("https://api.matriklen.dk/api/v3.2/BfeEjer?bfe="+encodeURIComponent(bfe), {cache:"no-cache"})
+      .then(function(r){ return r.ok? r.json() : null; })
+      .then(function(d){
+        var raa = (d && Array.isArray(d.ejere))? d.ejere : [];
+        // type "Fiktiv" er ikke en ejer, men en note som "Opdelt i ejerlejligheder"
+        var rigtige = raa.filter(function(e){ return e.type!=="Fiktiv"; });
+        if(!rigtige.length) return (raa[0] && raa[0].navn)? {note:raa[0].navn} : null;
+        return { antal: rigtige.length, liste: rigtige.map(function(e){
+          return { navn:e.navn||null, type:e.type||null,
+                   ejerforhold: EJERFORHOLD_KODE[e.ejerforholdskode] || null,
+                   andel: e.faktiskEjerandel? e.faktiskEjerandel["tæller"]+"/"+e.faktiskEjerandel["nævner"] : null,
+                   overtagelsesdato: e.overtagelsesdato||null,
+                   tinglysningsdato: e.tinglysningsdato||null };
+        }) };
+      })
+      .catch(function(){ return null; });
+  }
+
   function doLookup(adresse){
     toast("Henter registerdata…");
     fetch(PROXY_URL+"/ejendom?adresse="+encodeURIComponent(adresse))
       .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
       .then(function(res){
         if(!res.ok || res.j.error){ toast("Opslag fejlede: "+(res.j.error||"ukendt fejl fra backend")); return; }
-        var prop=toProp(res.j);
-        REAL[prop.id]=prop;
-        registerGem(prop);
-        openDetail(prop.id);
-        toast("Registerdata hentet ✓");
+        var j=res.j;
+        var harEjer = j.ejer && ((j.ejer.liste && j.ejer.liste.length) || j.ejer.note);
+        return (harEjer? Promise.resolve(j.ejer) : hentEjerDirekte(j.bfe))
+          .then(function(ejer){
+            if(ejer) j.ejer=ejer;
+            var prop=toProp(j);
+            REAL[prop.id]=prop;
+            registerGem(prop);
+            openDetail(prop.id);
+            toast("Registerdata hentet ✓");
+          });
       })
       // Browseren afslører ikke om et fetch fejlede på CORS eller på netværk, men
       // i praksis er årsagen at worker'en ikke tillader den adresse siden kører på.
