@@ -170,6 +170,65 @@ async function ejereBatch(bfeListe) {
   return ud;
 }
 
+
+// BBR-oplysninger pr. jordstykke, batchet ligesom ejerne. Datafordeleren er et
+// licenseret API vi har adgang til, saa volumen er i orden her — modsat
+// matriklen.dk, der er en intern backend uden aftale om programmatisk brug.
+async function bbrForJordstykke(featureid, env) {
+  const nøgle = new Request(`https://cache.internal/bbr?v=1&js=${encodeURIComponent(featureid)}`);
+  const cache = typeof caches !== "undefined" ? caches.default : null;
+  if (cache) {
+    const hit = await cache.match(nøgle);
+    if (hit) return hit.json();
+  }
+  try {
+    const byg = await getJson(dafUrl("BBR/BBRPublic/1/rest/bygning", { jordstykke: featureid }, env));
+    const aktive = (byg || []).filter((b) => AKTIV_STATUS.includes(b.status));
+    if (!aktive.length) return null;
+    const anv = aktive.map((b) => ANVENDELSE[b.byg021BygningensAnvendelse] || String(b.byg021BygningensAnvendelse || ""));
+    const ud = {
+      anvendelser: anv,
+      kategori: boligKategori(anv),
+      opført: aktive.map((b) => b.byg026Opførelsesår).filter(Boolean).sort()[0] ?? null,
+      boligArealM2: sumFelt(aktive, "byg039BygningensSamledeBoligAreal"),
+      bygningsArealM2: sumFelt(aktive, "byg038SamletBygningsareal"),
+      antalBygninger: aktive.length,
+    };
+    if (cache) {
+      await cache.put(nøgle, new Response(JSON.stringify(ud), {
+        headers: { "Cache-Control": "max-age=604800", "Content-Type": "application/json" },
+      }));
+    }
+    return ud;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Samme kategorier som appen viser i badgen, så filter og visning er enige.
+function boligKategori(anv) {
+  if (anv.some((a) => /etagebolig|flerfamilie/i.test(a))) return "Flerfamiliehus";
+  if (anv.some((a) => /række|kæde|dobbelthus/i.test(a))) return "Række-/dobbelthus";
+  if (anv.some((a) => /enfamilie|stuehus/i.test(a))) return "Enfamiliehus";
+  const navne = anv.filter((a) => a && !/^\d+$/.test(a));
+  return navne.length ? navne[0] : null;
+}
+
+async function bbrBatch(idListe, env) {
+  const kø = idListe.slice(0, EJERE_MAKS);
+  const ud = {};
+  let i = 0;
+  async function arbejd() {
+    while (i < kø.length) {
+      const id = kø[i++];
+      const r = await bbrForJordstykke(id, env);
+      if (r) ud[id] = r;
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(4, kø.length) }, arbejd));
+  return ud;
+}
+
 async function jordstykkeInfo(js) {
   if (!js) return null;
   const j = await getJson(`${DAWA}/jordstykker/${js.ejerlav.kode}/${encodeURIComponent(js.matrikelnr)}`);
@@ -407,6 +466,18 @@ export default {
     const o = tilladtOrigin(request);
     if (request.method === "OPTIONS") return new Response(null, { headers: cors(o) });
     const url = new URL(request.url);
+
+    if (request.method === "GET" && url.pathname === "/bbr") {
+      if (!env.DAF_USER || !env.DAF_PASS) return json({ error: "server missing DAF_USER/DAF_PASS" }, 500, o);
+      const ids = (url.searchParams.get("js") || "")
+        .split(",").map((x) => x.trim()).filter((x) => /^\d+$/.test(x));
+      if (!ids.length) return json({}, 200, o);
+      try {
+        return json(await bbrBatch(ids, env), 200, o);
+      } catch (e) {
+        return json({ error: (e && e.message) || "bbr-opslag fejlede" }, 502, o);
+      }
+    }
 
     if (request.method === "GET" && url.pathname === "/ejere") {
       const bfe = (url.searchParams.get("bfe") || "")

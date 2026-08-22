@@ -282,8 +282,14 @@
           <div class="fld"><div class="rowout"><span>Ejertid (min. år)</span><b id="o-tenure">0</b></div><input id="f-tenure" type="range" min="0" max="50" step="1" value="0"></div>
         </div>
         <div class="fsection">
+          <h4>Ejendom</h4>
+          <div class="fld"><label>Ejendomstype</label><select id="f-type"><option value="">Alle typer</option><option>Enfamiliehus</option><option>Række-/dobbelthus</option><option>Flerfamiliehus</option></select></div>
+          <div class="fld"><div class="rowout"><span>Beboelsesareal (min. m²)</span><b id="o-area">0</b></div><input id="f-area" type="range" min="0" max="1000" step="25" value="0"></div>
+          <div class="fld"><div class="rowout"><span>Opført senest</span><b id="o-year">alle</b></div><input id="f-year" type="range" min="1850" max="2025" step="5" value="2025"></div>
+        </div>
+        <div class="fsection">
           <h4>Kræver adgang vi ikke har</h4>
-          <p class="asst-note" style="margin:0;">Ejers alder og bopæl kræver CPR. Antal ejendomme pr. ejer kræver Ejerfortegnelsens totaludtræk. Handelspris kræver Tinglysning. Ejendomstype, areal og antal enheder kræver et BBR-opslag pr. ejendom.</p>
+          <p class="asst-note" style="margin:0;">Ejers alder og bopæl kræver CPR. Antal ejendomme pr. ejer kræver Ejerfortegnelsens totaludtræk. Handelspris og vurdering kræver Tinglysning og VUR.</p>
         </div>
         <button class="btn ghost sm" style="width:100%; margin-top:14px;" id="f-reset">Nulstil filtre</button>
       </div>
@@ -591,7 +597,7 @@
   /* ---- Farv matrikler efter ejerskabsfilteret ----
      Ejerforhold findes kun pr. BFE-nummer, så det hentes samlet gennem worker'en.
      Ved brede kortudsnit er der for mange matrikler til at det giver mening. */
-  var ejerCache = {};
+  var ejerCache = {}, bbrCache = {};
 
   function erPrivat(e){ return !!e && /privatperson/i.test(e.ejerforhold||""); }
 
@@ -739,6 +745,25 @@
       }).catch(function(){ return {}; });
   }
 
+  // Samme moenster som ejerne: bundter, saa Cloudflares graense paa 50 udgaaende
+  // kald pr. request ikke rammes, og resultatet caches lokalt.
+  function hentBbrIBundter(idListe){
+    var bundter=[];
+    for(var i=0;i<idListe.length;i+=BUNDT) bundter.push(idListe.slice(i,i+BUNDT));
+    var samlet={}, n=0;
+    function tag(){
+      if(n>=bundter.length) return Promise.resolve();
+      var b=bundter[n++];
+      return fetch(PROXY_URL+"/bbr?js="+b.join(","))
+        .then(function(r){ return r.ok? r.json():{}; })
+        .catch(function(){ return {}; })
+        .then(function(svar){ Object.keys(svar).forEach(function(k){ samlet[k]=svar[k]; }); return tag(); });
+    }
+    var koer=[];
+    for(var k=0;k<Math.min(SAMTIDIGE_BUNDTER,bundter.length);k++) koer.push(tag());
+    return Promise.all(koer).then(function(){ return samlet; });
+  }
+
   function hentEjereIBundter(bfeListe){
     var bundter=[];
     for(var i=0;i<bfeListe.length;i+=BUNDT) bundter.push(bfeListe.slice(i,i+BUNDT));
@@ -783,17 +808,24 @@
     // Hent kun de ejere vi ikke har i forvejen. Uden det ville hvert filterskift
     // slaa alle ejendomme op igen — spild, og kaldene begynder at fejle.
     var mangler = bfeListe.filter(function(b){ return ejerCache[b]===undefined; });
+    var jsIds = Array.from(new Set(medBfe.map(function(l){ return l.feature.properties.featureid; }).filter(Boolean)));
+    var manglerBbr = jsIds.filter(function(i){ return bbrCache[i]===undefined; });
+
     Promise.all([
       adresserIUdsnit(c, radius),
-      mangler.length? hentEjereIBundter(mangler) : Promise.resolve({})
+      mangler.length? hentEjereIBundter(mangler) : Promise.resolve({}),
+      manglerBbr.length? hentBbrIBundter(manglerBbr) : Promise.resolve({})
     ]).then(function(svar){
       var adr=svar[0];
       Object.keys(svar[1]).forEach(function(b){ ejerCache[b]=svar[1][b]; });
       mangler.forEach(function(b){ if(ejerCache[b]===undefined) ejerCache[b]=null; });
+      Object.keys(svar[2]).forEach(function(i){ bbrCache[i]=svar[2][i]; });
+      manglerBbr.forEach(function(i){ if(bbrCache[i]===undefined) bbrCache[i]=null; });
       var ejere={};
       bfeListe.forEach(function(b){ if(ejerCache[b]) ejere[b]=ejerCache[b]; });
 
-      var oensket=$("f-ownertype").value, minTid=+$("f-tenure").value;
+      var oensket=$("f-ownertype").value, minTid=+$("f-tenure").value,
+          oensketType=$("f-type").value, minAreal=+$("f-area").value, maxAar=+$("f-year").value;
       var traef=[];
       medBfe.forEach(function(l){
         var pr=l.feature.properties, e=ejere[pr.bfenummer];
@@ -801,8 +833,12 @@
         if(oensket && (oensket==="Privatperson")!==erPrivat(e)) return;
         var aar=e.overtagelsesdato? +e.overtagelsesdato.slice(0,4) : null;
         if(minTid>0 && (!aar || (YEAR-aar)<minTid)) return;
+        var bbr=bbrCache[pr.featureid]||null;
+        if(oensketType && (!bbr || bbr.kategori!==oensketType)) return;
+        if(minAreal>0 && (!bbr || !(bbr.boligArealM2>=minAreal))) return;
+        if(maxAar<2025 && (!bbr || !(bbr.opført && bbr.opført<=maxAar))) return;
         var a=adr[pr.ejerlavkode+"/"+pr.matrikelnr];
-        traef.push({pr:pr, e:e, adresse:(a&&a.betegnelse)||null, enheder:(a&&a.antal)||0, aar:aar, lag:l});
+        traef.push({pr:pr, e:e, bbr:bbr, adresse:(a&&a.betegnelse)||null, enheder:(a&&a.antal)||0, aar:aar, lag:l});
       });
       traef.sort(function(x,y){ return (x.aar||9999)-(y.aar||9999); });
       sidsteTraef=traef; visGraense=VIS_ANTAL;
@@ -844,7 +880,11 @@
       return '<div class="card deal" data-bfe="'+t.pr.bfenummer+'">'+
         '<div class="main">'+
           '<div class="addr">'+(t.adresse || ("Matr.nr. "+t.pr.matrikelnr+" "+t.pr.ejerlavnavn))+'</div>'+
-          '<div class="meta">'+(t.pr.kommunenavn||"")+' · '+nf.format(t.pr.registreretareal||0)+' m² grund'+
+          '<div class="meta">'+(t.pr.kommunenavn||"")+
+            (t.bbr&&t.bbr.kategori? ' · '+t.bbr.kategori:'')+
+            (t.bbr&&t.bbr.boligArealM2? ' · '+nf.format(t.bbr.boligArealM2)+' m² bolig':'')+
+            (t.bbr&&t.bbr.opført? ' · opført '+t.bbr.opført:'')+
+            ' · '+nf.format(t.pr.registreretareal||0)+' m² grund'+
             (t.enheder>1? ' · '+t.enheder+' adresser':'')+'</div>'+
           '<div class="owner">'+(t.e.navn||"–")+
             '<span style="color:var(--muted)">'+(t.e.ejerforhold? ' · '+t.e.ejerforhold:'')+(ejertid? ' · '+ejertid:'')+'</span>'+
@@ -888,9 +928,10 @@
 
   /* ---- Find deals ---- */
   function initFilters(){
-    ["f-ownertype","f-tenure"].forEach(function(id){ $(id).addEventListener("input", renderDeals); });
+    ["f-ownertype","f-tenure","f-type","f-area","f-year"].forEach(function(id){ $(id).addEventListener("input", renderDeals); });
     $("f-reset").addEventListener("click", function(){
       $("f-ownertype").value=""; $("f-tenure").value=0;
+      $("f-type").value=""; $("f-area").value=0; $("f-year").value=2025;
       $("f-region").value=""; $("f-kommune").value=""; $("f-by").value="";
       renderDeals();
     });
@@ -900,6 +941,8 @@
   // Listen kommer fra soegEjendomme(); mock-data bruges ikke laengere til visning.
   function renderDeals(){
     $("o-tenure").textContent = $("f-tenure").value;
+    $("o-area").textContent = $("f-area").value+" m²";
+    $("o-year").textContent = +$("f-year").value>=2025 ? "alle" : $("f-year").value;
     soegEjendomme();
   }
 
