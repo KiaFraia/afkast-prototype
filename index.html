@@ -10,32 +10,30 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
-  /* Varm benhvid side, hvide kort, dyb groen til det man kan trykke paa.
-     Bonen er nemmere at se paa end rent hvidt i lange sessioner, og groennen
-     baerer betydning i stedet for bare at pynte: den markerer handling og traef. */
+  /* Rent hvidt, slate-graa og pilleformede knapper — samme opbygning som
+     forlaegget, men med vores groenne hvor deres indigo sidder. */
   :root{
-    --blue:#0f5c5a; --blue-dark:#073838; --blue-bg:#e6f1f0;   /* accenten er groen */
-    --ink:#161614; --muted:#5c5c55; --faint:#8a8a82;
-    --line:#dddcd3; --line-blod:#efebe3; --line-haard:#c7c5bc;
+    --blue:#0f5c5a; --blue-dark:#0a4442; --blue-bg:#e7f2f0; --blue-bg2:#f2f9f8;
+    --ink:#0f172a; --muted:#475569; --faint:#94a3b8;
+    --line:#e2e8f0; --line-blod:#f1f5f9; --line-haard:#cbd5e1;
     --bg:#ffffff;          /* kortflade */
-    --bg2:#f1efe7;         /* siden — varm bone */
-    --bg3:#fbfaf6;         /* nedsaenket / hover */
-    --green:#0f5c5a; --green-bg:#e6f1f0;
-    --amber:#8a6a1f; --amber-bg:#f6efdd;
-    --red:#9c3b2c; --red-bg:#f4e2dd;
+    --bg2:#ffffff;         /* siden */
+    --bg3:#f8fafc;         /* nedsaenket / hover */
+    --green:#0f5c5a; --green-bg:#e7f2f0;
+    --amber:#a16207; --amber-bg:#fef3c7;
+    --red:#b91c1c; --red-bg:#fee2e2;
+    /* Piller hoerer til deres marketingside. Selve appen — den du sendte —
+       bruger afrundede rektangler hele vejen. */
     --radius:14px; --radius-sm:9px;
-    --skygge:0 1px 0 rgba(22,22,20,.04), 0 1px 3px rgba(15,92,90,.06);
-    --skygge-hoej:0 14px 30px -14px rgba(22,22,20,.22);
+    --skygge:0 1px 2px rgba(15,23,42,.04);
+    --skygge-hoej:0 10px 30px -12px rgba(15,23,42,.18);
     --mono:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   }
   ::selection{background:#cfe6e4;}
   *{box-sizing:border-box;}
   body{margin:0; font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg2); line-height:1.55; -webkit-font-smoothing:antialiased;}
-  /* Store overskrifter i vaegt 300. Det er det greb der giver den redaktionelle
-     ro — fed skrift i den stoerrelse ville skrige. Smaa titler bliver ved 500,
-     hvor 300 ville blive spinkelt. */
-  h1,.vhead h1,.dhead .addr,.modal h2{font-weight:300; letter-spacing:-0.028em;}
-  h2,h3,.facts .addr{font-weight:500; letter-spacing:-0.018em;}
+  h1,.vhead h1,.dhead .addr,.modal h2{font-weight:700; letter-spacing:-0.025em;}
+  h2,h3,.facts .addr{font-weight:600; letter-spacing:-0.02em;}
   /* Etiketter i sans med bred spaerring. Mono ville stoeje mod den rene form —
      den gemmes til tallene, hvor den gavner. */
   .fsection h4, .dbadge, .beta, .etab th, .asst-forslag-t{
@@ -55,11 +53,11 @@
   .tab:hover{background:var(--bg3); color:var(--ink);}
   .tab.active{background:var(--blue-bg); color:var(--blue-dark); border-color:transparent;}
   .spacer{flex:1;}
-  .btn{font-weight:500; font-size:14.5px; cursor:pointer; border-radius:var(--radius-sm); padding:10px 20px; border:1px solid var(--blue); background:var(--blue); color:#fff; transition:.15s;}
+  .btn{font-weight:600; font-size:14.5px; cursor:pointer; border-radius:var(--radius-sm); padding:10px 20px; border:1px solid var(--blue); background:var(--blue); color:#fff; transition:.15s;}
   .btn:hover{background:var(--blue-dark); border-color:var(--blue-dark);}
   .btn.ghost{background:#fff; color:var(--ink); border-color:var(--line-haard);}
   .btn.ghost:hover{background:var(--bg3); border-color:var(--muted);}
-  .btn.sm{padding:7px 14px; font-size:13.5px;}
+  .btn.sm{padding:8px 16px; font-size:13.5px;}
   .btn.sm{padding:6px 12px; font-size:14px;}
   .view{display:none; padding:22px 0 60px;}
   .view.active{display:block;}
