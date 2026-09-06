@@ -6,31 +6,36 @@
 <title>Ejendomsinvestoren — find off-market leads i danske ejendomme</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
-  /* Sort og hvidt paa hvid bund. Sorten er blaek, ikke #000 — ren sort paa
-     ren hvid er haardt at laese i lange stykker. Fladerne skilles ad med
-     haarfine konturer frem for graa baggrunde. */
+  /* Varm benhvid side, hvide kort, dyb groen til det man kan trykke paa.
+     Bonen er nemmere at se paa end rent hvidt i lange sessioner, og groennen
+     baerer betydning i stedet for bare at pynte: den markerer handling og traef. */
   :root{
-    --blue:#1d1e20; --blue-dark:#000000; --blue-bg:#f2f2f3;
-    --ink:#1d1e20; --muted:#6b6e72; --faint:#9b9ea2;
-    --line:#e5e5e7; --line-blod:#f0f0f1;
+    --blue:#0f5c5a; --blue-dark:#073838; --blue-bg:#e6f1f0;   /* accenten er groen */
+    --ink:#161614; --muted:#5c5c55; --faint:#8a8a82;
+    --line:#dddcd3; --line-blod:#efebe3; --line-haard:#c7c5bc;
     --bg:#ffffff;          /* kortflade */
-    --bg2:#ffffff;         /* siden */
-    --bg3:#f5f5f6;         /* hover og nedsaenkede felter */
-    --green:#1d1e20; --green-bg:#f2f2f3;
-    --amber:#6b6e72; --amber-bg:#f2f2f3;
-    --red:#1d1e20; --red-bg:#f2f2f3;
-    --radius:12px; --radius-sm:999px;
-    --skygge:none;
+    --bg2:#f1efe7;         /* siden — varm bone */
+    --bg3:#fbfaf6;         /* nedsaenket / hover */
+    --green:#0f5c5a; --green-bg:#e6f1f0;
+    --amber:#8a6a1f; --amber-bg:#f6efdd;
+    --red:#9c3b2c; --red-bg:#f4e2dd;
+    --radius:14px; --radius-sm:9px;
+    --skygge:0 1px 0 rgba(22,22,20,.04), 0 1px 3px rgba(15,92,90,.06);
+    --skygge-hoej:0 14px 30px -14px rgba(22,22,20,.22);
     --mono:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   }
-  ::selection{background:#e4e4e6;}
+  ::selection{background:#cfe6e4;}
   *{box-sizing:border-box;}
-  body{margin:0; font-family:"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg2); line-height:1.55; -webkit-font-smoothing:antialiased;}
-  h1,h2,h3,.vhead h1,.facts .addr,.dhead .addr,.modal h2{letter-spacing:-0.02em; font-weight:600;}
+  body{margin:0; font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg2); line-height:1.55; -webkit-font-smoothing:antialiased;}
+  /* Store overskrifter i vaegt 300. Det er det greb der giver den redaktionelle
+     ro — fed skrift i den stoerrelse ville skrige. Smaa titler bliver ved 500,
+     hvor 300 ville blive spinkelt. */
+  h1,.vhead h1,.dhead .addr,.modal h2{font-weight:300; letter-spacing:-0.028em;}
+  h2,h3,.facts .addr{font-weight:500; letter-spacing:-0.018em;}
   /* Etiketter i sans med bred spaerring. Mono ville stoeje mod den rene form —
      den gemmes til tallene, hvor den gavner. */
   .fsection h4, .dbadge, .beta, .etab th, .asst-forslag-t{
@@ -41,20 +46,20 @@
   button{font:inherit;}
   .wrap{max-width:1160px; margin:0 auto; padding:0 24px;}
   nav .inner{max-width:1160px; margin:0 auto; padding:0 24px; width:100%; display:flex; align-items:center; gap:18px;}
-  nav{border-bottom:1px solid var(--line); background:rgba(255,255,255,.82); backdrop-filter:blur(14px); position:sticky; top:0; z-index:1000; padding:14px 0;}
+  nav{border-bottom:1px solid var(--line); background:rgba(241,239,231,.86); backdrop-filter:blur(14px); position:sticky; top:0; z-index:1000; padding:14px 0;}
   .logo{display:flex; align-items:center; gap:10px; font-weight:600; font-size:18px;}
-  .logo .mark{width:30px; height:30px; border-radius:999px; background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:center; font-size:17px;}
+  .logo .mark{width:30px; height:30px; border-radius:var(--radius-sm); background:var(--blue); color:#fff; display:flex; align-items:center; justify-content:center; font-size:17px;}
   .logo .tag{font-size:11px; color:var(--faint); font-weight:400;}
   .tabs{display:flex; gap:4px; margin-left:8px;}
-  .tab{padding:7px 15px; border-radius:999px; border:1px solid transparent; background:transparent; color:var(--muted); font-weight:500; cursor:pointer;}
+  .tab{padding:7px 15px; border-radius:var(--radius-sm); border:1px solid transparent; background:transparent; color:var(--muted); font-weight:500; cursor:pointer;}
   .tab:hover{background:var(--bg3); color:var(--ink);}
-  .tab.active{background:transparent; color:var(--ink); border-color:var(--line);}
+  .tab.active{background:var(--blue-bg); color:var(--blue-dark); border-color:transparent;}
   .spacer{flex:1;}
-  .btn{font-weight:500; cursor:pointer; border-radius:999px; padding:10px 20px; border:1px solid var(--ink); background:var(--ink); color:#fff; transition:.15s;}
-  .btn:hover{background:#000; border-color:#000;}
-  .btn.ghost{background:transparent; color:var(--ink); border-color:var(--line);}
-  .btn.ghost:hover{background:var(--bg3); border-color:#c9c9cc;}
-  .btn.sm{padding:7px 15px; font-size:13.5px;}
+  .btn{font-weight:500; font-size:14.5px; cursor:pointer; border-radius:var(--radius-sm); padding:10px 20px; border:1px solid var(--blue); background:var(--blue); color:#fff; transition:.15s;}
+  .btn:hover{background:var(--blue-dark); border-color:var(--blue-dark);}
+  .btn.ghost{background:#fff; color:var(--ink); border-color:var(--line-haard);}
+  .btn.ghost:hover{background:var(--bg3); border-color:var(--muted);}
+  .btn.sm{padding:7px 14px; font-size:13.5px;}
   .btn.sm{padding:6px 12px; font-size:14px;}
   .view{display:none; padding:22px 0 60px;}
   .view.active{display:block;}
@@ -77,7 +82,7 @@
   .fld-note{display:block; font-size:11.5px; color:var(--faint); margin-top:2px;}
   .fld .rowout{display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:2px;}
   .fld .rowout b{color:var(--ink); font-weight:600;}
-  .fld select{width:100%; font:inherit; padding:10px 14px; border:1px solid var(--line); border-radius:999px; background:var(--bg2); color:inherit;}
+  .fld select{width:100%; font:inherit; padding:10px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:#fff; color:inherit;}
   .fmain{min-width:0;}
   .map{height:380px; border-radius:var(--radius); border:1px solid var(--line); z-index:1;}
   .assistant{padding:16px 18px; margin-bottom:18px;}
@@ -87,7 +92,7 @@
   .beta{font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; background:var(--blue-bg); color:var(--blue-dark); padding:2px 7px; border-radius:var(--radius);}
   .lookup{padding:14px 18px; margin-bottom:18px;}
   .lk-wrap{position:relative;}
-  .lk-wrap input{width:100%; box-sizing:border-box; font:inherit; font-size:15px; padding:12px 16px; border:1px solid var(--line); border-radius:var(--radius); background:var(--bg2); color:inherit; outline:none;}
+  .lk-wrap input{width:100%; box-sizing:border-box; font:inherit; font-size:15px; padding:12px 16px; border:1px solid var(--line); border-radius:var(--radius-sm); background:#fff; color:inherit; outline:none;}
   .lk-wrap input:focus{border-color:var(--ink); background:#fff;}
   .lk-sugg{position:absolute; left:0; right:0; top:50px; z-index:40; background:#fff; border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; box-shadow:0 12px 36px rgba(29,30,32,.14); display:none; max-height:280px; overflow-y:auto;}
   .lk-sugg div{padding:10px 14px; font-size:14px; cursor:pointer;}
@@ -95,14 +100,14 @@
   .lk-sugg .lk-type{font-size:11.5px; color:var(--faint); margin-left:6px;}
   .lk-sugg .lk-tom{color:var(--faint); cursor:default; font-size:13px;}
   .lk-sugg .lk-tom:hover{background:transparent;}
-  .ef-list{max-height:190px; overflow:auto; margin-top:8px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2);}
+  .ef-list{max-height:190px; overflow:auto; margin-top:8px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg3);}
   .ef-item{padding:8px 12px; font-size:13px; cursor:pointer; border-bottom:1px solid var(--line);}
   .ef-item:last-child{border-bottom:none;}
   .ef-item:hover{background:var(--bg3); color:var(--ink);}
   .ef-item.her{background:var(--blue-bg); color:var(--blue-dark); font-weight:600; cursor:default;}
   .ef-her{font-weight:400; font-size:11.5px; color:var(--blue); margin-left:6px;}
   .etab{width:100%; border-collapse:collapse; font-size:13px;}
-  .etab th{position:sticky; top:0; background:var(--bg2); text-align:left; font-weight:600; color:var(--muted); font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; padding:8px 12px; border-bottom:1px solid var(--line); white-space:nowrap;}
+  .etab th{position:sticky; top:0; background:var(--bg3); text-align:left; font-weight:600; color:var(--muted); font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; padding:8px 12px; border-bottom:1px solid var(--line); white-space:nowrap;}
   .etab td{padding:8px 12px; border-bottom:1px solid var(--line); white-space:nowrap;}
   .etab td.adr{white-space:normal; min-width:220px;} /* adressen må ombryde, så tallene til højre aldrig klippes */
   .etab tr:last-child td{border-bottom:none;}
@@ -113,15 +118,15 @@
   .etab-r.her td{background:var(--blue-bg); color:var(--blue-dark); font-weight:600; cursor:default;}
   .asst-gear{border:none; background:none; cursor:pointer; font-size:17px; color:var(--muted);}
   .asst-form{display:flex; gap:8px;}
-  .asst-form input{flex:1; font:inherit; font-size:15px; padding:11px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2); outline:none;}
+  .asst-form input{flex:1; font:inherit; font-size:15px; padding:11px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:#fff; outline:none;}
   .asst-form input:focus{border-color:var(--ink); background:#fff;}
-  .asst-settings{margin-top:12px; padding:12px 14px; background:var(--bg2); border-radius:var(--radius-sm);}
+  .asst-settings{margin-top:12px; padding:12px 14px; background:var(--bg3); border-radius:var(--radius-sm);}
   .asst-settings label{display:block; font-size:12.5px; color:var(--muted); margin-bottom:6px;}
-  .asst-settings input{font:inherit; padding:9px 14px; border:1px solid var(--line); border-radius:999px; background:var(--bg2); color:inherit;}
+  .asst-settings input{font:inherit; padding:9px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:#fff; color:inherit;}
   .asst-note{font-size:12px; color:var(--faint); margin:10px 0 0; line-height:1.55;}
   .asst-result{margin-top:14px;}
   .asst-reply{font-size:14.5px; margin-bottom:12px;}
-  .asst-forslag{background:var(--bg2); border-radius:var(--radius-sm); padding:12px 14px;}
+  .asst-forslag{background:var(--bg3); border-radius:var(--radius-sm); padding:12px 14px;}
   .asst-forslag-t{font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:9px;}
   .asst-actions{display:flex; align-items:center; gap:10px; margin-top:12px;}
   .asst-src{font-size:11.5px; color:var(--faint); margin-left:auto;}
@@ -129,10 +134,10 @@
   .reg-resultat{margin-top:10px;}
   .reg-ejer{margin-top:10px;}
   .reg-navn{font-size:13.5px; font-weight:600; margin-bottom:5px;}
-  .reg-ejer .ef-item{border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2); margin-bottom:5px;}
+  .reg-ejer .ef-item{border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg3); margin-bottom:5px;}
   .pop-dim{color:var(--faint);}
-  .pop-btn{margin-top:8px; width:100%; font:inherit; font-size:12.5px; font-weight:500; cursor:pointer; border-radius:999px; padding:6px 10px; border:1px solid var(--ink); background:var(--ink); color:#fff;}
-  .pop-btn:hover{background:#000;}
+  .pop-btn{margin-top:8px; width:100%; font:inherit; font-size:12.5px; font-weight:500; cursor:pointer; border-radius:var(--radius-sm); padding:6px 10px; border:1px solid var(--blue); background:var(--blue); color:#fff;}
+  .pop-btn:hover{background:var(--blue-dark);}
   .legend{display:flex; gap:16px; font-size:12.5px; color:var(--muted); margin:10px 2px 0;}
   .legend span{display:inline-flex; align-items:center; gap:6px;}
   .dot{width:10px; height:10px; border-radius:50%; display:inline-block;}
@@ -148,7 +153,7 @@
   .deal .meta{font-size:13px; color:var(--muted); margin:2px 0 8px;}
   .deal .owner{font-size:13.5px;}
   .chips{display:flex; flex-wrap:wrap; gap:5px; margin-top:8px;}
-  .chip{font-size:12px; padding:2px 9px; border-radius:var(--radius); background:var(--bg2); color:var(--muted); border:1px solid var(--line);}
+  .chip{font-size:12px; padding:2px 10px; border-radius:999px; background:var(--bg3); color:var(--muted); border:1px solid var(--line);}
   .chip.hot{background:var(--red-bg); color:var(--red); border-color:transparent;}
   .deal .acts{display:flex; flex-direction:column; gap:6px; flex-shrink:0;}
   /* detail (ejendomsoverblik) */
@@ -170,7 +175,7 @@
   .dhead .ids .sep{color:var(--line); margin:0 4px;}
   .dbadges{display:flex; align-items:center; gap:7px; flex-wrap:wrap;}
   .dbadge{font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; padding:3px 9px; border-radius:var(--radius); background:var(--blue-bg); color:var(--blue-dark);}
-  .dbadge.alt{background:var(--bg2); color:var(--muted); border:1px solid var(--line);}
+  .dbadge.alt{background:var(--bg3); color:var(--muted); border:1px solid var(--line);}
   .dtop{display:flex; align-items:center; gap:18px; margin-bottom:16px;}
   .dtop .back{margin-bottom:0; flex-shrink:0;}
   .dsearch{flex:1; max-width:430px;}
@@ -207,15 +212,15 @@
   .board{display:grid; grid-template-columns:repeat(6,1fr); gap:12px;}
   .col{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:10px; min-height:120px;}
   .col h3{font-size:12px; font-weight:600; margin:0 0 10px; color:var(--muted); display:flex; justify-content:space-between; gap:4px;}
-  .col h3 .n{background:var(--bg2); border-radius:var(--radius); padding:1px 7px; font-size:11px;}
-  .pcard{background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px; margin-bottom:9px; cursor:pointer;}
+  .col h3 .n{background:var(--bg3); border-radius:999px; padding:1px 8px; font-size:11px;}
+  .pcard{background:var(--bg3); border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px; margin-bottom:9px; cursor:pointer;}
   .pcard:hover{border-color:var(--blue);}
   .pcard.dragging{opacity:.45;}
   .col.drag-over{border-color:var(--blue); background:var(--blue-bg);}
   .pcard .pa{font-weight:600; font-size:13px; margin-bottom:3px;}
   .pcard .pm{font-size:12px; color:var(--muted); margin-bottom:7px;}
-  .pcard textarea{width:100%; font:inherit; font-size:12px; border:1px solid var(--line); border-radius:var(--radius); padding:6px; resize:vertical; min-height:32px; background:var(--bg2); color:inherit;}
-  .pcard select{width:100%; font:inherit; font-size:12px; padding:5px; border:1px solid var(--line); border-radius:999px; background:var(--bg2); color:inherit; margin-top:7px;}
+  .pcard textarea{width:100%; font:inherit; font-size:12px; border:1px solid var(--line); border-radius:var(--radius); padding:6px; resize:vertical; min-height:32px; background:#fff; color:inherit;}
+  .pcard select{width:100%; font:inherit; font-size:12px; padding:5px; border:1px solid var(--line); border-radius:var(--radius-sm); background:#fff; color:inherit; margin-top:7px;}
   .pcard .rm{border:none; background:none; color:var(--faint); cursor:pointer; font-size:15px;}
   .segbtn{display:inline-flex; border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; background:var(--bg); flex-shrink:0;}
   .segbtn button{border:none; background:transparent; padding:8px 16px; font-weight:500; color:var(--muted); cursor:pointer;}
@@ -227,7 +232,7 @@
   .prow .pmain{flex:1; min-width:0;}
   .prow .pa2{font-weight:600; font-size:15px;}
   .prow .pm2{font-size:13px; color:var(--muted); margin-top:2px;}
-  .prow select{font:inherit; font-size:13px; padding:7px 10px; border:1px solid var(--line); border-radius:999px; background:var(--bg2); color:inherit; flex-shrink:0;}
+  .prow select{font:inherit; font-size:13px; padding:7px 10px; border:1px solid var(--line); border-radius:var(--radius-sm); background:#fff; color:inherit; flex-shrink:0;}
   .prow .rm{border:none; background:none; color:var(--faint); cursor:pointer; font-size:17px; flex-shrink:0;}
   .empty{color:var(--faint); font-size:13px; text-align:center; padding:30px 0;}
   /* dashboard strip */
@@ -241,16 +246,17 @@
   .overlay.open{display:flex;}
   .modal{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:30px; max-width:420px; width:100%; text-align:center;}
   .modal h2{margin:0 0 8px; font-size:22px;} .modal p{margin:0 0 18px; color:var(--muted);}
-  .modal form{display:flex; gap:8px;} .modal input{flex:1; font:inherit; padding:12px 16px; border:1px solid var(--line); border-radius:999px; background:var(--bg2); color:inherit;}
-  .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:11px 20px; border-radius:999px; font-size:14px; opacity:0; transition:.25s; z-index:3000; pointer-events:none;}
+  .modal form{display:flex; gap:8px;} .modal input{flex:1; font:inherit; padding:12px 16px; border:1px solid var(--line); border-radius:var(--radius-sm); background:#fff; color:inherit;}
+  .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:11px 20px; border-radius:var(--radius-sm); font-size:14px; opacity:0; transition:.25s; z-index:3000; pointer-events:none;}
   .toast.show{opacity:1;}
   /* Leaflet foelger appens form: bloede hjoerner og samme kantfarve. */
   .leaflet-container{background:var(--bg3);}
   .leaflet-popup-content-wrapper{border-radius:var(--radius); border:1px solid var(--line); box-shadow:0 12px 36px rgba(29,30,32,.14);}
   .leaflet-control-layers, .leaflet-control-layers-toggle{border-radius:var(--radius) !important;}
   .leaflet-bar{border-radius:var(--radius); overflow:hidden;}
-  /* Kortet holdes i graatoner, saa det ikke er den ene farvede flade paa siden. */
-  .kort-graa{filter:grayscale(1) contrast(.95);}
+  /* Et let afdaempet kort, saa vejkortets kraftige farver ikke slaas med
+     matrikelskellene — men ikke graat: kortet er selve produktet. */
+  .kort-graa{filter:saturate(.45) contrast(.96) brightness(1.02);}
 
   @media(max-width:900px){
     .finder{grid-template-columns:1fr;} .fpanel{position:static;}
@@ -433,7 +439,7 @@
     if(p.ownerPropCount>=2){ s+=10; r.push({t:p.ownerPropCount+" ejendomme", hot:false}); }
     return {score:s, reasons:r};
   }
-  function tier(s){ return s>=60 ? ["#1d1e20","var(--red)","Hot"] : s>=35 ? ["#6b6e72","var(--amber)","Warm"] : ["#9b9ea2","var(--muted)","Kold"]; }
+  function tier(s){ return s>=60 ? ["#9c3b2c","var(--red)","Hot"] : s>=35 ? ["#8a6a1f","var(--amber)","Warm"] : ["#0f5c5a","var(--muted)","Kold"]; }
 
   /* ---- Pipeline state ---- */
   var pipeline = [];
@@ -475,8 +481,8 @@
   var DK_RAMME = [[54.40, 7.60], [57.95, 15.45]], DK_MIN_ZOOM = 7;
   var matrikelLayer=null, matrikelCache={}, matrikelReq=null, matrikelTimer=null, matrikelLast=null;
   var matrikelPopupAaben=false;
-  var matrikelColor="#1d1e20";
-  function matrikelStyle(){ return {color:matrikelColor, weight:1, opacity:.55, fillColor:matrikelColor, fillOpacity:.03}; }
+  var matrikelColor="#0f5c5a";
+  function matrikelStyle(){ return {color:matrikelColor, weight:1, opacity:.5, fillColor:matrikelColor, fillOpacity:.04}; }
 
   // Baggrundskort. Med nøgle bruges Geodatastyrelsens/SDFI's egne kort — samme
   // som på matriklen.dk. Uden nøgle bruges frie kort med tilsvarende udseende.
@@ -535,7 +541,7 @@
       // gule skel på luftfoto, magenta på det lyse skærmkort
       // Gul paa ortofoto, magenta paa alt andet — begge staar klart baade paa
       // det moerke og det lyse skaermkort.
-      matrikelColor = e.name==="Ortofoto" ? "#ffd400" : "#1d1e20";
+      matrikelColor = e.name==="Ortofoto" ? "#ffd400" : "#0f5c5a";
       matrikelLast=null; // tving gentegning, så skellene får den nye farve
       loadMatrikel();
     });
@@ -725,8 +731,8 @@
       var d=o.p, col=tier(o.s.score)[0];
       var m=L.circleMarker([d.lat,d.lng], {radius:9, fillColor:col, color:"#fff", weight:2, fillOpacity:.95});
       m.bindPopup('<b>'+d.addr+'</b><br>'+d.city+' · '+d.type+'<br>Lead score: <b>'+o.s.score+'</b><br>'+
-        '<button onclick="gemLead('+d.id+')" style="margin-top:6px; cursor:pointer; border:1px solid #1d1e20; background:#1d1e20; color:#fff; border-radius:999px; padding:5px 12px;">Gem som lead</button> '+
-        '<button onclick="openBiz('+d.id+')" style="margin-top:6px; cursor:pointer; border:1px solid #d5d5d8; background:transparent; color:#1d1e20; border-radius:999px; padding:5px 12px;">Business case</button>');
+        '<button onclick="gemLead('+d.id+')" style="margin-top:6px; cursor:pointer; border:1px solid #0f5c5a; background:#0f5c5a; color:#fff; border-radius:9px; padding:5px 12px;">Gem som lead</button> '+
+        '<button onclick="openBiz('+d.id+')" style="margin-top:6px; cursor:pointer; border:1px solid #c7c5bc; background:#fff; color:#161614; border-radius:9px; padding:5px 12px;">Business case</button>');
       m.addTo(markerLayer); markers[d.id]=m;
     });
   }
@@ -1042,7 +1048,7 @@
     if(harFiltre) traef.forEach(function(t){ ramt[t.pr.bfenummer]=1; });
     alle.forEach(function(l){
       if(ramt[l.feature.properties.bfenummer]){
-        l.setStyle({color:"#1d1e20", weight:2.5, opacity:1, fillColor:"#1d1e20", fillOpacity:.16});
+        l.setStyle({color:"#0f5c5a", weight:2.5, opacity:1, fillColor:"#0f5c5a", fillOpacity:.22});
         l.bringToFront();
       } else {
         l.setStyle({color:matrikelColor, weight:1, opacity:.35, fillColor:matrikelColor, fillOpacity:.02});
@@ -1467,7 +1473,7 @@
   // Tomme felter udelades — et felt med bare "–" fylder uden at oplyse noget.
   // Værdier som "– (kræver Tinglysning)" beholdes, for de forklarer hvorfor.
   /* ---- Kort på ejendomssiden — samme lag som forsiden, matriklen fremhævet ---- */
-  var dMap=null, dNaboLag=null, dEgenLag=null, dNaboGeo=null, dFarve="#1d1e20";
+  var dMap=null, dNaboLag=null, dEgenLag=null, dNaboGeo=null, dFarve="#0f5c5a";
   var dSidst=null, dPopupAaben=false, dTimer=null, dReq=null;
   var DETAIL_MIN_ZOOM = 15;
 
@@ -1529,7 +1535,7 @@
     dNaboLag=L.layerGroup().addTo(dMap);
     dEgenLag=L.layerGroup().addTo(dMap);
     dMap.on('baselayerchange', function(e){
-      dFarve = e.name==="Ortofoto" ? "#ffd400" : "#1d1e20";
+      dFarve = e.name==="Ortofoto" ? "#ffd400" : "#0f5c5a";
       tegnNaboMatrikler();
     });
     setTimeout(function(){ if(dMap) dMap.invalidateSize(); }, 60);
@@ -1548,13 +1554,13 @@
         .then(function(gj){
           if(!dMap || !gj || !(gj.features||[]).length) return;
           var lag=L.geoJSON(gj, {pane:'degen',
-            style:{color:"#1d1e20", weight:2.5, opacity:1, fillColor:"#1d1e20", fillOpacity:.14}}).addTo(dEgenLag);
+            style:{color:"#0f5c5a", weight:2.5, opacity:1, fillColor:"#0f5c5a", fillOpacity:.16}}).addTo(dEgenLag);
           dMap.invalidateSize(); // sikrer rigtige mål, så zoomniveauet bliver korrekt
           dMap.fitBounds(lag.getBounds(), {padding:[28,28], maxZoom:19});
         }).catch(function(){});
       dNote("Ejendommen er markeret med rødt · klik en naboejendom for at slå den op");
     } else {
-      L.circleMarker([d.lat,d.lng], {pane:'degen', radius:9, fillColor:"#1d1e20", color:"#fff", weight:2, fillOpacity:.95}).addTo(dEgenLag);
+      L.circleMarker([d.lat,d.lng], {pane:'degen', radius:9, fillColor:"#0f5c5a", color:"#fff", weight:2, fillOpacity:.95}).addTo(dEgenLag);
       dNote("Placering markeret med rødt · matrikel vises når ejendommen slås op i registrene");
     }
   }
