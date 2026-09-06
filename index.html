@@ -10,42 +10,55 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
+  /* Moerkt, monokromt tema. Fladerne baerer designet, ikke farverne: sort
+     side, let haevede kort, og én lys accent til det man kan klikke paa. */
   :root{
-    --blue:#1763d1; --blue-dark:#0c447c; --blue-bg:#eaf1fc;
-    --ink:#0f172a; --muted:#64748b; --faint:#94a3b8;
-    --line:#e6e8ec; --bg:#ffffff; --bg2:#f7f8fa;
-    --green:#0f9b78; --green-bg:#e6f7f0;
-    --amber:#b9770f; --amber-bg:#fdf2da;
-    --red:#dc2626; --red-bg:#fdeaea;
-    --radius:14px; --radius-sm:10px;
+    --blue:#5dabff; --blue-dark:#93c6ff; --blue-bg:rgba(93,171,255,.14);
+    --ink:#edf2f5; --muted:#9f9f9f; --faint:#6e6e6e;
+    --line:rgba(255,255,255,.10); --line-blod:rgba(255,255,255,.055);
+    --bg:#141416;          /* kortflade */
+    --bg2:#0a0a0b;         /* side og nedsaenkede felter */
+    --bg3:#1f1f23;         /* haevet: fokus, hover, menuer */
+    --green:#3ddc97; --green-bg:rgba(61,220,151,.14);
+    --amber:#e8b64c; --amber-bg:rgba(232,182,76,.14);
+    --red:#ff6b6b; --red-bg:rgba(255,107,107,.14);
+    --radius:8px; --radius-sm:8px;
+    --skygge:0 1px 2px rgba(0,0,0,.6);
   }
+  ::selection{background:rgba(93,171,255,.3);}
+  ::-webkit-scrollbar{width:10px; height:10px;}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.13); border-radius:99px;}
+  ::-webkit-scrollbar-track{background:transparent;}
   *{box-sizing:border-box;}
   body{margin:0; font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg2); line-height:1.55; -webkit-font-smoothing:antialiased;}
+  /* Overskrifter staar i vaegt 500 med stram knibning frem for fed skrift —
+     det er det der giver den rolige, tekniske tone. */
+  h1,h2,h3,.vhead h1,.facts .addr,.dhead .addr,.modal h2{letter-spacing:-0.045em; font-weight:500;}
   button{font:inherit;}
   .wrap{max-width:1160px; margin:0 auto; padding:0 24px;}
   nav .inner{max-width:1160px; margin:0 auto; padding:0 24px; width:100%; display:flex; align-items:center; gap:18px;}
-  nav{border-bottom:1px solid var(--line); background:var(--bg); position:sticky; top:0; z-index:1000; padding:14px 0;}
+  nav{border-bottom:1px solid var(--line); background:rgba(10,10,11,.86); backdrop-filter:blur(12px); position:sticky; top:0; z-index:1000; padding:14px 0;}
   .logo{display:flex; align-items:center; gap:10px; font-weight:600; font-size:18px;}
-  .logo .mark{width:30px; height:30px; border-radius:8px; background:var(--blue); color:#fff; display:flex; align-items:center; justify-content:center; font-size:17px;}
+  .logo .mark{width:30px; height:30px; border-radius:8px; background:var(--ink); color:var(--bg2); display:flex; align-items:center; justify-content:center; font-size:17px;}
   .logo .tag{font-size:11px; color:var(--faint); font-weight:400;}
   .tabs{display:flex; gap:4px; margin-left:8px;}
   .tab{padding:8px 14px; border-radius:var(--radius-sm); border:none; background:transparent; color:var(--muted); font-weight:500; cursor:pointer;}
-  .tab:hover{background:var(--bg2); color:var(--ink);}
-  .tab.active{background:var(--blue-bg); color:var(--blue-dark);}
+  .tab:hover{background:rgba(255,255,255,.06); color:var(--ink);}
+  .tab.active{background:rgba(255,255,255,.10); color:var(--ink);}
   .spacer{flex:1;}
-  .btn{font-weight:500; cursor:pointer; border-radius:var(--radius-sm); padding:9px 16px; border:1px solid var(--blue); background:var(--blue); color:#fff; transition:.15s;}
-  .btn:hover{background:var(--blue-dark); border-color:var(--blue-dark);}
-  .btn.ghost{background:transparent; color:var(--blue);}
-  .btn.ghost:hover{background:var(--blue-bg);}
+  .btn{font-weight:500; cursor:pointer; border-radius:var(--radius-sm); padding:9px 16px; border:1px solid var(--ink); background:var(--ink); color:#111; transition:.15s;}
+  .btn:hover{background:#fff; border-color:#fff;}
+  .btn.ghost{background:rgba(255,255,255,.06); color:var(--ink); border-color:var(--line);}
+  .btn.ghost:hover{background:rgba(255,255,255,.13); border-color:rgba(255,255,255,.2);}
   .btn.sm{padding:6px 12px; font-size:14px;}
   .view{display:none; padding:22px 0 60px;}
   .view.active{display:block;}
-  .vhead h1{font-size:26px; font-weight:600; margin:0 0 4px; letter-spacing:-0.01em;}
+  .vhead h1{font-size:30px; margin:0 0 4px;}
   .vhead p{margin:0 0 20px; color:var(--muted); font-size:15px;}
-  .card{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); box-shadow:0 1px 3px rgba(15,23,42,.04);}
+  .card{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--skygge);}
   .energy{display:inline-block; min-width:20px; text-align:center; font-weight:600; font-size:11px; padding:1px 7px; border-radius:6px;}
   input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:5px; border-radius:3px; background:var(--line); outline:none; margin-top:6px;}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--blue); cursor:pointer; border:3px solid #fff; box-shadow:0 1px 4px rgba(15,23,42,.25);}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--blue); cursor:pointer; border:3px solid var(--bg2); box-shadow:0 1px 4px rgba(0,0,0,.6);}
   /* finder layout */
   .finder{display:grid; grid-template-columns:290px 1fr; gap:20px; align-items:start;}
   .fpanel{padding:18px 20px; position:sticky; top:78px; max-height:calc(100vh - 96px); overflow-y:auto;}
@@ -59,7 +72,7 @@
   .fld-note{display:block; font-size:11.5px; color:var(--faint); margin-top:2px;}
   .fld .rowout{display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:2px;}
   .fld .rowout b{color:var(--ink); font-weight:600;}
-  .fld select{width:100%; font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg2);}
+  .fld select{width:100%; font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg2); color:inherit;}
   .fmain{min-width:0;}
   .map{height:380px; border-radius:var(--radius); border:1px solid var(--line); z-index:1;}
   .assistant{padding:16px 18px; margin-bottom:18px;}
@@ -70,17 +83,17 @@
   .lookup{padding:14px 18px; margin-bottom:18px;}
   .lk-wrap{position:relative;}
   .lk-wrap input{width:100%; box-sizing:border-box; font:inherit; font-size:15px; padding:11px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2); outline:none;}
-  .lk-wrap input:focus{border-color:var(--blue); background:#fff;}
-  .lk-sugg{position:absolute; left:0; right:0; top:46px; z-index:40; background:#fff; border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; box-shadow:0 8px 24px rgba(15,23,42,.10); display:none; max-height:280px; overflow-y:auto;}
+  .lk-wrap input:focus{border-color:rgba(255,255,255,.28); background:var(--bg3);}
+  .lk-sugg{position:absolute; left:0; right:0; top:46px; z-index:40; background:var(--bg3); border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,.65); display:none; max-height:280px; overflow-y:auto;}
   .lk-sugg div{padding:10px 14px; font-size:14px; cursor:pointer;}
-  .lk-sugg div:hover{background:var(--bg2);}
+  .lk-sugg div:hover{background:rgba(255,255,255,.07);}
   .lk-sugg .lk-type{font-size:11.5px; color:var(--faint); margin-left:6px;}
   .lk-sugg .lk-tom{color:var(--faint); cursor:default; font-size:13px;}
   .lk-sugg .lk-tom:hover{background:transparent;}
   .ef-list{max-height:190px; overflow:auto; margin-top:8px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2);}
   .ef-item{padding:8px 12px; font-size:13px; cursor:pointer; border-bottom:1px solid var(--line);}
   .ef-item:last-child{border-bottom:none;}
-  .ef-item:hover{background:#fff; color:var(--blue);}
+  .ef-item:hover{background:var(--bg3); color:var(--ink);}
   .ef-item.her{background:var(--blue-bg); color:var(--blue-dark); font-weight:600; cursor:default;}
   .ef-her{font-weight:400; font-size:11.5px; color:var(--blue); margin-left:6px;}
   .etab{width:100%; border-collapse:collapse; font-size:13px;}
@@ -91,15 +104,15 @@
   .etab .num{text-align:right;}
   .etab .dim{color:var(--faint);}
   .etab-r{cursor:pointer;}
-  .etab-r:hover td{background:#fff; color:var(--blue);}
+  .etab-r:hover td{background:rgba(255,255,255,.05); color:var(--ink);}
   .etab-r.her td{background:var(--blue-bg); color:var(--blue-dark); font-weight:600; cursor:default;}
   .asst-gear{border:none; background:none; cursor:pointer; font-size:17px; color:var(--muted);}
   .asst-form{display:flex; gap:8px;}
   .asst-form input{flex:1; font:inherit; font-size:15px; padding:11px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2); outline:none;}
-  .asst-form input:focus{border-color:var(--blue); background:#fff;}
+  .asst-form input:focus{border-color:rgba(255,255,255,.28); background:var(--bg3);}
   .asst-settings{margin-top:12px; padding:12px 14px; background:var(--bg2); border-radius:var(--radius-sm);}
   .asst-settings label{display:block; font-size:12.5px; color:var(--muted); margin-bottom:6px;}
-  .asst-settings input{font:inherit; padding:9px 12px; border:1px solid var(--line); border-radius:8px;}
+  .asst-settings input{font:inherit; padding:9px 12px; border:1px solid var(--line); border-radius:8px; background:var(--bg2); color:inherit;}
   .asst-note{font-size:12px; color:var(--faint); margin:10px 0 0; line-height:1.55;}
   .asst-result{margin-top:14px;}
   .asst-reply{font-size:14.5px; margin-bottom:12px;}
@@ -113,8 +126,8 @@
   .reg-navn{font-size:13.5px; font-weight:600; margin-bottom:5px;}
   .reg-ejer .ef-item{border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2); margin-bottom:5px;}
   .pop-dim{color:var(--faint);}
-  .pop-btn{margin-top:8px; width:100%; font:inherit; font-size:12.5px; font-weight:500; cursor:pointer; border-radius:7px; padding:5px 10px; border:1px solid var(--blue); background:var(--blue); color:#fff;}
-  .pop-btn:hover{background:var(--blue-dark); border-color:var(--blue-dark);}
+  .pop-btn{margin-top:8px; width:100%; font:inherit; font-size:12.5px; font-weight:500; cursor:pointer; border-radius:7px; padding:5px 10px; border:1px solid var(--ink); background:var(--ink); color:#111;}
+  .pop-btn:hover{background:#fff;}
   .legend{display:flex; gap:16px; font-size:12.5px; color:var(--muted); margin:10px 2px 0;}
   .legend span{display:inline-flex; align-items:center; gap:6px;}
   .dot{width:10px; height:10px; border-radius:50%; display:inline-block;}
@@ -137,7 +150,7 @@
   .back{background:none; border:none; color:var(--blue); cursor:pointer; font-weight:500; padding:0; margin-bottom:14px; display:inline-flex; gap:6px; align-items:center;}
   .facts{padding:22px 24px;}
   .facts .head{display:flex; align-items:flex-start; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:20px; padding-bottom:18px; border-bottom:1px solid var(--line);}
-  .facts .addr{display:flex; align-items:center; gap:8px; font-weight:600; font-size:20px; letter-spacing:-0.01em;}
+  .facts .addr{display:flex; align-items:center; gap:8px; font-size:21px;}
   .facts .sub{color:var(--muted); font-size:14px; margin-top:3px;}
   .detail-acts{display:flex; gap:8px; flex-shrink:0;}
   .fgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:18px 22px;}
@@ -147,7 +160,7 @@
   .mangler b{font-weight:600;}
   /* ejendomsside: kort til højre, datakort til venstre */
   .dhead{display:flex; align-items:flex-start; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:18px;}
-  .dhead .addr{font-weight:600; font-size:23px; letter-spacing:-0.015em; margin-top:7px;}
+  .dhead .addr{font-size:25px; margin-top:7px;}
   .dhead .ids{color:var(--muted); font-size:13px; margin-top:6px;}
   .dhead .ids .sep{color:var(--line); margin:0 4px;}
   .dbadges{display:flex; align-items:center; gap:7px; flex-wrap:wrap;}
@@ -167,7 +180,7 @@
   .dcol{display:grid; gap:16px; min-width:0;}
   .boxes{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;}
   @media(max-width:1180px){ .boxes{grid-template-columns:1fr;} }
-  .kcard{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); box-shadow:0 1px 3px rgba(15,23,42,.04); overflow:hidden;}
+  .kcard{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--skygge); overflow:hidden;}
   .kcard-t{display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; padding:14px 18px; border-bottom:1px solid var(--line); font-weight:600; font-size:15px;}
   .kcard-t .fine{font-weight:400; color:var(--muted); font-size:13px;}
   .kcard-t .lnk{margin-left:auto; font-weight:500; font-size:13.5px; color:var(--blue); background:none; border:none; cursor:pointer; padding:0;}
@@ -196,8 +209,8 @@
   .col.drag-over{border-color:var(--blue); background:var(--blue-bg);}
   .pcard .pa{font-weight:600; font-size:13px; margin-bottom:3px;}
   .pcard .pm{font-size:12px; color:var(--muted); margin-bottom:7px;}
-  .pcard textarea{width:100%; font:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:6px; resize:vertical; min-height:32px; background:#fff;}
-  .pcard select{width:100%; font:inherit; font-size:12px; padding:5px; border:1px solid var(--line); border-radius:8px; background:#fff; margin-top:7px;}
+  .pcard textarea{width:100%; font:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:6px; resize:vertical; min-height:32px; background:var(--bg3); color:inherit;}
+  .pcard select{width:100%; font:inherit; font-size:12px; padding:5px; border:1px solid var(--line); border-radius:8px; background:var(--bg3); color:inherit; margin-top:7px;}
   .pcard .rm{border:none; background:none; color:var(--faint); cursor:pointer; font-size:15px;}
   .segbtn{display:inline-flex; border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; background:var(--bg); flex-shrink:0;}
   .segbtn button{border:none; background:transparent; padding:8px 16px; font-weight:500; color:var(--muted); cursor:pointer;}
@@ -209,7 +222,7 @@
   .prow .pmain{flex:1; min-width:0;}
   .prow .pa2{font-weight:600; font-size:15px;}
   .prow .pm2{font-size:13px; color:var(--muted); margin-top:2px;}
-  .prow select{font:inherit; font-size:13px; padding:7px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; flex-shrink:0;}
+  .prow select{font:inherit; font-size:13px; padding:7px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg3); color:inherit; flex-shrink:0;}
   .prow .rm{border:none; background:none; color:var(--faint); cursor:pointer; font-size:17px; flex-shrink:0;}
   .empty{color:var(--faint); font-size:13px; text-align:center; padding:30px 0;}
   /* dashboard strip */
@@ -219,13 +232,35 @@
   .dcard .v{font-size:22px; font-weight:600; margin-top:4px;}
   .dcard .s{font-size:12px; color:var(--faint); margin-top:2px;}
   /* modal / toast */
-  .overlay{display:none; position:fixed; inset:0; background:rgba(15,23,42,.5); z-index:2000; align-items:center; justify-content:center; padding:20px;}
+  .overlay{display:none; position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:2000; align-items:center; justify-content:center; padding:20px;}
   .overlay.open{display:flex;}
-  .modal{background:#fff; border-radius:var(--radius); padding:30px; max-width:420px; width:100%; text-align:center;}
+  .modal{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:30px; max-width:420px; width:100%; text-align:center;}
   .modal h2{margin:0 0 8px; font-size:22px;} .modal p{margin:0 0 18px; color:var(--muted);}
-  .modal form{display:flex; gap:8px;} .modal input{flex:1; font:inherit; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius-sm);}
-  .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:11px 20px; border-radius:999px; font-size:14px; opacity:0; transition:.25s; z-index:3000; pointer-events:none;}
+  .modal form{display:flex; gap:8px;} .modal input{flex:1; font:inherit; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2); color:inherit;}
+  .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:#111; padding:11px 20px; border-radius:999px; font-size:14px; opacity:0; transition:.25s; z-index:3000; pointer-events:none;}
   .toast.show{opacity:1;}
+  /* ---- Leaflet i moerkt tema ----
+     Bibliotekets egne flader er hvide som standard og lyser hele kortet op. */
+  .leaflet-container{background:#0f0f11;}
+  /* Vender det lyse kort til moerkt. hue-rotate retter farverne op igen, saa
+     skov og vand ikke bliver lilla naar lysheden vendes. */
+  .kort-moerk{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(1.05);}
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip{background:var(--bg3); color:var(--ink); box-shadow:0 12px 32px rgba(0,0,0,.7);}
+  .leaflet-popup-content-wrapper{border:1px solid var(--line); border-radius:var(--radius);}
+  .leaflet-popup-close-button{color:var(--faint) !important;}
+  .leaflet-popup-close-button:hover{color:var(--ink) !important;}
+  .leaflet-bar a, .leaflet-control-layers-toggle{background:var(--bg3) !important; color:var(--ink) !important; border-color:var(--line) !important;}
+  .leaflet-bar a:hover{background:#2a2a2f !important;}
+  .leaflet-bar a.leaflet-disabled{background:#151517 !important; color:#4a4a4a !important;}
+  .leaflet-control-layers{background:var(--bg3) !important; color:var(--ink); border:1px solid var(--line) !important; box-shadow:0 12px 32px rgba(0,0,0,.6) !important;}
+  .leaflet-control-layers-separator{border-color:var(--line);}
+  .leaflet-control-attribution{background:rgba(10,10,11,.8) !important; color:var(--faint) !important;}
+  .leaflet-control-attribution a{color:var(--muted) !important;}
+
+  /* Stiplede sidesk innner som paa forlaegget — en let teknisk ramme om indholdet */
+  .view.active > .wrap{border-left:1px dashed var(--line-blod); border-right:1px dashed var(--line-blod);}
+  @media(max-width:900px){ .view.active > .wrap{border:none;} }
+
   @media(max-width:900px){
     .finder{grid-template-columns:1fr;} .fpanel{position:static;}
     .board{grid-template-columns:1fr 1fr;} .dash{grid-template-columns:1fr 1fr;}
@@ -407,7 +442,7 @@
     if(p.ownerPropCount>=2){ s+=10; r.push({t:p.ownerPropCount+" ejendomme", hot:false}); }
     return {score:s, reasons:r};
   }
-  function tier(s){ return s>=60 ? ["#dc2626","var(--red)","Hot"] : s>=35 ? ["#b9770f","var(--amber)","Warm"] : ["#1763d1","var(--muted)","Kold"]; }
+  function tier(s){ return s>=60 ? ["#ff6b6b","var(--red)","Hot"] : s>=35 ? ["#e8b64c","var(--amber)","Warm"] : ["#5dabff","var(--muted)","Kold"]; }
 
   /* ---- Pipeline state ---- */
   var pipeline = [];
@@ -449,8 +484,10 @@
   var DK_RAMME = [[54.40, 7.60], [57.95, 15.45]], DK_MIN_ZOOM = 7;
   var matrikelLayer=null, matrikelCache={}, matrikelReq=null, matrikelTimer=null, matrikelLast=null;
   var matrikelPopupAaben=false;
-  var matrikelColor="#e5007d";
-  function matrikelStyle(){ return {color:matrikelColor, weight:1.2, opacity:.95, fillColor:matrikelColor, fillOpacity:.06}; }
+  var matrikelColor="#ff2d9b";
+  // Daempet paa moerk baggrund: fuld styrke var kalibreret til hvidt kort og
+  // overdoever det moerke.
+  function matrikelStyle(){ return {color:matrikelColor, weight:1, opacity:.62, fillColor:matrikelColor, fillOpacity:.05}; }
 
   // Baggrundskort. Med nøgle bruges Geodatastyrelsens/SDFI's egne kort — samme
   // som på matriklen.dk. Uden nøgle bruges frie kort med tilsvarende udseende.
@@ -468,6 +505,17 @@
       };
     }
     return {
+      // Moerkt kort foerst, saa kortet hoerer til resten af fladen. Det lyse
+      // ligger stadig i vaelgeren.
+      //
+      // Der findes ikke en fri moerk flisekilde der raekker til de zoom vi
+      // arbejder i: CARTOs er vandmaerket "API KEY REQUIRED" uden abonnement,
+      // og Esris Dark Gray svarer "Map data not yet available" fra zoom 17.
+      // Derfor vendes det lyse kort om med et CSS-filter i stedet — samme
+      // fliser, ingen ekstra tjeneste, og det virker i alle zoom.
+      "Mørkt": L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom:19, subdomains:'abcd', className:'kort-moerk', attribution:'© OpenStreetMap, © CARTO'
+      }),
       "Skærmkort (dæmpet)": L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         maxZoom:19, subdomains:'abcd', attribution:'© OpenStreetMap, © CARTO'
       }),
@@ -491,7 +539,7 @@
     map.getPane('matrikel').style.zIndex = 350;
 
     var baser = baggrundskort();
-    baser["Skærmkort (dæmpet)"].addTo(map);
+    baser[Object.keys(baser)[0]].addTo(map);
 
     matrikelLayer = L.layerGroup().addTo(map);
     markerLayer = L.layerGroup().addTo(map);
@@ -502,7 +550,9 @@
     map.on('overlayadd overlayremove', scheduleMatrikel);
     map.on('baselayerchange', function(e){
       // gule skel på luftfoto, magenta på det lyse skærmkort
-      matrikelColor = e.name==="Ortofoto" ? "#ffd400" : "#e5007d";
+      // Gul paa ortofoto, magenta paa alt andet — begge staar klart baade paa
+      // det moerke og det lyse skaermkort.
+      matrikelColor = e.name==="Ortofoto" ? "#ffd400" : "#ff2d9b";
       matrikelLast=null; // tving gentegning, så skellene får den nye farve
       loadMatrikel();
     });
@@ -690,10 +740,10 @@
     markerLayer.clearLayers(); markers={};
     list.forEach(function(o){
       var d=o.p, col=tier(o.s.score)[0];
-      var m=L.circleMarker([d.lat,d.lng], {radius:9, fillColor:col, color:"#fff", weight:2, fillOpacity:.95});
+      var m=L.circleMarker([d.lat,d.lng], {radius:9, fillColor:col, color:"#0a0a0b", weight:2, fillOpacity:.95});
       m.bindPopup('<b>'+d.addr+'</b><br>'+d.city+' · '+d.type+'<br>Lead score: <b>'+o.s.score+'</b><br>'+
-        '<button onclick="gemLead('+d.id+')" style="margin-top:6px; cursor:pointer; border:1px solid #1763d1; background:#1763d1; color:#fff; border-radius:8px; padding:5px 10px;">Gem som lead</button> '+
-        '<button onclick="openBiz('+d.id+')" style="margin-top:6px; cursor:pointer; border:1px solid #1763d1; background:#fff; color:#1763d1; border-radius:8px; padding:5px 10px;">Business case</button>');
+        '<button onclick="gemLead('+d.id+')" style="margin-top:6px; cursor:pointer; border:1px solid #edf2f5; background:#edf2f5; color:#111; border-radius:8px; padding:5px 10px;">Gem som lead</button> '+
+        '<button onclick="openBiz('+d.id+')" style="margin-top:6px; cursor:pointer; border:1px solid rgba(255,255,255,.2); background:transparent; color:#edf2f5; border-radius:8px; padding:5px 10px;">Business case</button>');
       m.addTo(markerLayer); markers[d.id]=m;
     });
   }
@@ -1009,7 +1059,7 @@
     if(harFiltre) traef.forEach(function(t){ ramt[t.pr.bfenummer]=1; });
     alle.forEach(function(l){
       if(ramt[l.feature.properties.bfenummer]){
-        l.setStyle({color:"#1763d1", weight:2.5, opacity:1, fillColor:"#1763d1", fillOpacity:.30});
+        l.setStyle({color:"#5dabff", weight:2.5, opacity:1, fillColor:"#5dabff", fillOpacity:.28});
         l.bringToFront();
       } else {
         l.setStyle({color:matrikelColor, weight:1, opacity:.35, fillColor:matrikelColor, fillOpacity:.02});
@@ -1434,7 +1484,7 @@
   // Tomme felter udelades — et felt med bare "–" fylder uden at oplyse noget.
   // Værdier som "– (kræver Tinglysning)" beholdes, for de forklarer hvorfor.
   /* ---- Kort på ejendomssiden — samme lag som forsiden, matriklen fremhævet ---- */
-  var dMap=null, dNaboLag=null, dEgenLag=null, dNaboGeo=null, dFarve="#e5007d";
+  var dMap=null, dNaboLag=null, dEgenLag=null, dNaboGeo=null, dFarve="#ff2d9b";
   var dSidst=null, dPopupAaben=false, dTimer=null, dReq=null;
   var DETAIL_MIN_ZOOM = 15;
 
@@ -1491,12 +1541,12 @@
     dMap.createPane('degen'); dMap.getPane('degen').style.zIndex=360;
 
     var baser=baggrundskort();
-    baser["Skærmkort (dæmpet)"].addTo(dMap);
+    baser[Object.keys(baser)[0]].addTo(dMap);
     L.control.layers(baser).addTo(dMap);
     dNaboLag=L.layerGroup().addTo(dMap);
     dEgenLag=L.layerGroup().addTo(dMap);
     dMap.on('baselayerchange', function(e){
-      dFarve = e.name==="Ortofoto" ? "#ffd400" : "#e5007d";
+      dFarve = e.name==="Ortofoto" ? "#ffd400" : "#ff2d9b";
       tegnNaboMatrikler();
     });
     setTimeout(function(){ if(dMap) dMap.invalidateSize(); }, 60);
@@ -1521,7 +1571,7 @@
         }).catch(function(){});
       dNote("Ejendommen er markeret med rødt · klik en naboejendom for at slå den op");
     } else {
-      L.circleMarker([d.lat,d.lng], {pane:'degen', radius:9, fillColor:"#dc2626", color:"#fff", weight:2, fillOpacity:.95}).addTo(dEgenLag);
+      L.circleMarker([d.lat,d.lng], {pane:'degen', radius:9, fillColor:"#ff6b6b", color:"#0a0a0b", weight:2, fillOpacity:.95}).addTo(dEgenLag);
       dNote("Placering markeret med rødt · matrikel vises når ejendommen slås op i registrene");
     }
   }
