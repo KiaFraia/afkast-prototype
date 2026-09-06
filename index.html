@@ -71,7 +71,7 @@
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--blue); cursor:pointer; border:3px solid #fff; box-shadow:none;}
   /* finder layout */
   .finder{display:grid; grid-template-columns:290px 1fr; gap:20px; align-items:start;}
-  .fpanel{padding:18px 20px; position:sticky; top:78px; max-height:calc(100vh - 96px); overflow-y:auto;}
+  .fpanel{padding:18px 20px; position:sticky; top:20px; max-height:calc(100vh - 40px); overflow-y:auto;}
   .fsection{margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid var(--line);}
   .fsection:last-child{border:none; margin:0; padding:0;}
   .fsection h4{margin:0 0 12px; font-size:12px; font-weight:600; color:var(--faint); text-transform:uppercase; letter-spacing:.04em;}
@@ -204,8 +204,8 @@
   .knote{padding:13px 18px; border-top:1px solid var(--line); font-size:12.5px; color:var(--faint);}
   .kcard-t + .knote{border-top:none;}
   /* Kortet foelger med ned og fylder resten af skaermen */
-  .dmapkort{position:sticky; top:78px;}
-  .dmap{height:calc(100vh - 210px); min-height:420px; z-index:1;}
+  .dmapkort{position:sticky; top:20px;}
+  .dmap{height:calc(100vh - 150px); min-height:420px; z-index:1;}
   .dmap-note{padding:10px 16px; font-size:12.5px; color:var(--faint); border-top:1px solid var(--line);}
   @media(max-width:980px){ .dgrid{grid-template-columns:1fr;} .dmapkort{position:static;} .dmap{height:340px; min-height:0;} }
   /* pipeline */
@@ -258,6 +258,72 @@
      matrikelskellene — men ikke graat: kortet er selve produktet. */
   .kort-graa{filter:saturate(.45) contrast(.96) brightness(1.02);}
 
+
+  /* ---- Sidebar-skal ---- */
+  .sidebar{position:fixed; left:0; top:0; bottom:0; width:250px; background:#fff; border-right:1px solid var(--line);
+           padding:0 14px 20px; overflow-y:auto; z-index:900;}
+  .sb-logo{display:flex; align-items:center; gap:10px; font-weight:600; font-size:17px; letter-spacing:-0.02em;
+           padding:20px 8px 22px; margin-bottom:4px;}
+  .sb-logo .mark{width:30px; height:30px; border-radius:var(--radius-sm); background:var(--blue); color:#fff;
+                 display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;}
+  .sb-gruppe{margin-bottom:22px;}
+  .sb-gruppe h5{margin:0 0 6px; padding:0 8px; font-size:11px; font-weight:500; color:var(--faint);
+                text-transform:uppercase; letter-spacing:.11em;}
+  .sb-item{display:flex; align-items:center; gap:11px; width:100%; padding:7px 8px; margin-bottom:2px;
+           border:none; background:none; font:inherit; font-size:14.5px; color:var(--muted); cursor:pointer;
+           border-radius:var(--radius-sm); text-align:left; position:relative;}
+  .sb-item .ikon{width:28px; height:28px; border-radius:8px; background:var(--bg3); color:var(--muted);
+                 display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .sb-item .ikon svg{width:15px; height:15px; stroke:currentColor; fill:none; stroke-width:1.7;
+                     stroke-linecap:round; stroke-linejoin:round;}
+  .sb-item:hover{background:var(--bg3); color:var(--ink);}
+  .sb-item.active{background:var(--blue-bg); color:var(--blue-dark); font-weight:500;}
+  .sb-item.active .ikon{background:var(--blue); color:#fff;}
+  .sb-item.active::before{content:""; position:absolute; left:-14px; top:6px; bottom:6px; width:3px;
+                          border-radius:0 3px 3px 0; background:var(--blue);}
+  .sb-item[disabled]{opacity:.45; cursor:default;}
+  .sb-item[disabled]:hover{background:none; color:var(--muted);}
+  .sb-bund{padding:0 8px;}
+  .skal{margin-left:250px; min-height:100vh;}
+  @media(max-width:900px){
+    .sidebar{position:static; width:auto; height:auto; border-right:none; border-bottom:1px solid var(--line);}
+    .sb-gruppe{margin-bottom:12px;}
+    .skal{margin-left:0;}
+    .sb-item.active::before{display:none;}
+  }
+
+  /* ---- Samlet soegning ---- */
+  .soegside{max-width:780px; margin:0 auto; padding:9vh 0 60px;}
+  .soeg-top{text-align:center; margin-bottom:26px;}
+  .soeg-mark{display:inline-flex; align-items:center; gap:11px; font-size:27px; font-weight:600; letter-spacing:-0.03em;}
+  .soeg-mark .mark{width:38px; height:38px; border-radius:10px; background:var(--blue); color:#fff;
+                   display:flex; align-items:center; justify-content:center; font-size:21px;}
+  .soeg-top p{margin:12px 0 0; color:var(--muted); font-size:15.5px;}
+  .soeg-felt{position:relative;}
+  .soeg-felt input{width:100%; box-sizing:border-box; font:inherit; font-size:16px; padding:15px 18px 15px 46px;
+                   border:1px solid var(--line-haard); border-radius:var(--radius); background:#fff; outline:none;
+                   box-shadow:var(--skygge);}
+  .soeg-felt input:focus{border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-bg);}
+  .soeg-felt .lup{position:absolute; left:17px; top:50%; transform:translateY(-50%); color:var(--faint);
+                  width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:1.8;}
+  .soeg-res{margin-top:16px; background:#fff; border:1px solid var(--line); border-radius:var(--radius);
+            box-shadow:var(--skygge); overflow:hidden;}
+  .soeg-res:empty{display:none;}
+  .sr{display:flex; align-items:center; gap:13px; padding:13px 18px; cursor:pointer; border-top:1px solid var(--line-blod);}
+  .sr:first-child{border-top:none;}
+  .sr:hover{background:var(--bg3);}
+  .sr .ikon{width:34px; height:34px; border-radius:9px; background:var(--blue-bg); color:var(--blue);
+            display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .sr .ikon svg{width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:1.7;
+                stroke-linecap:round; stroke-linejoin:round;}
+  .sr .tx{flex:1; min-width:0;}
+  .sr .t1{display:block; font-size:14.5px; font-weight:500;}
+  .sr .t2{display:block; font-size:12.5px; color:var(--faint); margin-top:1px;}
+  .sr .pil{color:var(--faint); flex-shrink:0;}
+  .soeg-tom{padding:16px 18px; color:var(--muted); font-size:14px;}
+  .soeg-alle{display:block; width:100%; padding:12px; border:none; border-top:1px solid var(--line-blod);
+             background:none; font:inherit; font-size:13.5px; color:var(--blue); cursor:pointer;}
+  .soeg-alle:hover{background:var(--bg3);}
   @media(max-width:900px){
     .finder{grid-template-columns:1fr;} .fpanel{position:static;}
     .board{grid-template-columns:1fr 1fr;} .dash{grid-template-columns:1fr 1fr;}
@@ -267,40 +333,50 @@
 </head>
 <body>
 
-<nav><div class="inner">
-  <div class="logo"><span class="mark">E</span>Ejendomsinvestoren <span class="tag">arbejdstitel</span></div>
-  <div class="tabs">
-    <button class="tab active" data-view="find">Find deals</button>
-    <button class="tab" data-view="pipeline">Pipeline <span id="pipe-n"></span></button>
-  </div>
-  <span class="spacer"></span>
-  <button class="btn sm" onclick="openWait()">Få tidlig adgang</button>
-</div></nav>
+<aside class="sidebar">
+  <div class="sb-logo"><span class="mark">E</span>Ejendomsdata</div>
 
+  <div class="sb-gruppe">
+    <h5>Opdag</h5>
+    <button class="sb-item active" data-view="soeg"><span class="ikon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>Søg</button>
+    <button class="sb-item" data-view="find"><span class="ikon"><svg viewBox="0 0 24 24"><path d="M9 4L3 7v13l6-3 6 3 6-3V4l-6 3-6-3z"/><path d="M9 4v13M15 7v13"/></svg></span>Kort</button>
+  </div>
+
+  <div class="sb-gruppe">
+    <h5>Værktøjer</h5>
+    <button class="sb-item" data-view="pipeline"><span class="ikon"><svg viewBox="0 0 24 24"><path d="M6 4h12v16l-6-4-6 4z"/></svg></span>Gemte <span id="pipe-n"></span></button>
+  </div>
+
+  <div class="sb-gruppe">
+    <h5>Kommer senere</h5>
+    <button class="sb-item" disabled title="Kræver Tinglysningens handelsdata"><span class="ikon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span>Lignende handler</button>
+    <button class="sb-item" disabled title="Kræver Ejerfortegnelsens totaludtræk"><span class="ikon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6"/></svg></span>Ejerprofiler</button>
+    <button class="sb-item" disabled title="Ikke bygget endnu"><span class="ikon"><svg viewBox="0 0 24 24"><path d="M21 4L3 11l7 3 3 7z"/></svg></span>Breve</button>
+  </div>
+
+  <div class="sb-bund"><button class="btn sm" style="width:100%;" onclick="openWait()">Få tidlig adgang</button></div>
+</aside>
+
+<div class="skal">
 <div class="wrap">
 
-  <section class="view active" id="view-find">
-    <div class="vhead"><h1>Find deals</h1></div>
-
-    <div class="card lookup">
-      <div style="font-weight:600; font-size:15px; margin-bottom:9px;">Slå ejendom op <span class="beta">rigtige data</span></div>
-      <div class="lk-wrap">
-        <input id="lk-input" type="text" autocomplete="off" placeholder="Skriv en dansk adresse, fx Boulevarden 5, 4760 Vordingborg">
-        <div id="lk-sugg" class="lk-sugg"></div>
+  <section class="view active" id="view-soeg">
+    <div class="soegside">
+      <div class="soeg-top">
+        <div class="soeg-mark"><span class="mark">E</span>Ejendomsdata</div>
+        <p>Søg efter en adresse, ejer eller virksomhed</p>
       </div>
-      <p class="asst-note">Henter live registerdata via Datafordeleren (BBR, Matriklen, EBR). Ejernavne kræver EJF-certifikat og kommer senere.</p>
-    </div>
-
-
-    <div class="card lookup">
-      <div style="font-weight:600; font-size:15px; margin-bottom:9px;">Søg på ejer <span class="beta" id="reg-antal"></span></div>
-      <div class="lk-wrap">
-        <input id="reg-input" type="text" autocomplete="off" placeholder="Skriv et ejernavn, fx Lis Frølich">
+      <div class="soeg-felt">
+        <svg class="lup" viewBox="0 0 24 24" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="sog-input" type="text" autocomplete="off" placeholder="Søg efter en adresse, ejer eller virksomhed">
       </div>
-      <div id="reg-resultat" class="reg-resultat"></div>
-      <p class="asst-note">Søger blandt de ejendomme du har slået op. Registret vokser efterhånden som du arbejder — et landsdækkende ejerindeks kræver Ejerfortegnelsens totaludtræk.</p>
+      <div id="sog-res" class="soeg-res"></div>
+      <p class="asst-note" style="text-align:center;">Adresser kommer fra DAWA. Ejere og virksomheder søges i dit eget register — det vokser efterhånden som du slår ejendomme op.</p>
     </div>
+  </section>
 
+  <section class="view" id="view-find">
+    <div class="vhead"><h1>Kort</h1><p>Zoom ind på et område og filtrér blandt de ejendomme der ligger i udsnittet.</p></div>
     <div class="finder">
       <div class="card fpanel">
         <div class="fsection">
@@ -368,6 +444,7 @@
     <div class="pipe-list" id="pipe-list" style="display:none; margin-top:20px;"></div>
   </section>
 
+</div>
 </div>
 
 <div class="overlay" id="wait"><div class="modal">
@@ -453,17 +530,101 @@
   function updatePipeCount(){ var n=pipeline.length; $("pipe-n").textContent = n? "("+n+")":""; }
   function toast(msg){ var t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove("show");},1800); }
 
+
+  /* ---- Samlet soegning: adresser fra DAWA og ejere fra eget register ----
+     Ét felt frem for to. Raekkerne siger hvad de er, saa man kan se forskel paa
+     en adresse og et selskab uden at gaette. */
+  var SR_IKON = {
+    adresse:'<svg viewBox="0 0 24 24"><path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+    vej:'<svg viewBox="0 0 24 24"><path d="M4 10l8-6 8 6v9a1 1 0 01-1 1H5a1 1 0 01-1-1z"/></svg>',
+    firma:'<svg viewBox="0 0 24 24"><path d="M4 20V6a1 1 0 011-1h9a1 1 0 011 1v14"/><path d="M15 10h4a1 1 0 011 1v9"/><path d="M8 9h3M8 13h3M8 17h3"/><path d="M2 20h20"/></svg>',
+    person:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6"/></svg>'
+  };
+  var SR_PIL = '<svg class="pil" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+  var SR_VIS = 6;
+
+  function ejereIRegister(q){
+    var pr={};
+    Object.keys(REGISTER).forEach(function(b){
+      var r=REGISTER[b];
+      (r.ejere||[]).forEach(function(e){
+        if(!e.navn || e.navn.toLowerCase().indexOf(q)<0) return;
+        (pr[e.navn]=pr[e.navn]||[]).push(r);
+      });
+    });
+    return Object.keys(pr).sort(function(a,b){ return a.localeCompare(b,"da"); }).map(function(n){
+      // Selskabsformer staar bagest i navnet — de afgoer om raekken er person
+      // eller virksomhed, praecis som paa forlaegget.
+      var firma=/\b(a\/s|aps|p\/s|i\/s|k\/s|holding|ejendomme|invest|fond|forening|kommune|stat)\b/i.test(n);
+      return { slags:firma?"firma":"person", titel:n,
+               under:(firma?"Virksomhed":"Person")+" · "+pr[n].length+(pr[n].length===1?" ejendom":" ejendomme"),
+               adresse:pr[n][0].adresse };
+    });
+  }
+
+  function initSamletSoeg(){
+    var inp=$("sog-input"), box=$("sog-res"); if(!inp||!box) return;
+    var timer=null, alle=[], vis=SR_VIS;
+
+    function tegn(){
+      if(!alle.length){
+        box.innerHTML='<div class="soeg-tom">Ingen adresser eller ejere matcher søgningen.</div>';
+        return;
+      }
+      box.innerHTML = alle.slice(0,vis).map(function(r,i){
+        return '<div class="sr" data-i="'+i+'"><span class="ikon">'+(SR_IKON[r.slags]||SR_IKON.adresse)+'</span>'+
+          '<span class="tx"><span class="t1">'+r.titel+'</span><span class="t2">'+r.under+'</span></span>'+SR_PIL+'</div>';
+      }).join("") +
+      (alle.length>vis ? '<button class="soeg-alle" id="sog-mere">Se alle ('+alle.length+')</button>' : '');
+      var mere=$("sog-mere");
+      if(mere) mere.addEventListener("click", function(){ vis=alle.length; tegn(); });
+    }
+
+    box.addEventListener("click", function(ev){
+      var el=ev.target.closest(".sr"); if(!el) return;
+      var r=alle[+el.getAttribute("data-i")]; if(!r) return;
+      if(r.slags==="vej"){ inp.value=r.titel+" "; inp.focus(); inp.dispatchEvent(new Event("input")); return; }
+      if(r.adresse) doLookup(r.adresse);
+    });
+
+    inp.addEventListener("input", function(){
+      clearTimeout(timer);
+      var q=inp.value.trim();
+      vis=SR_VIS;
+      if(q.length<2){ box.innerHTML=""; return; }
+      // Registret ligger lokalt og svarer straks; adresserne kommer bagefter.
+      var lokale=ejereIRegister(q.toLowerCase());
+      alle=lokale.slice(); tegn();
+      if(q.length<3) return;
+      timer=setTimeout(function(){
+        fetch("https://api.dataforsyningen.dk/autocomplete?q="+encodeURIComponent(q)+"&per_side=8&fuzzy=")
+          .then(function(r){ return r.ok? r.json():[]; })
+          .then(function(liste){
+            if(inp.value.trim()!==q) return;   // et nyere tastetryk har overhalet
+            alle = lokale.concat(liste.map(function(x){
+              var t=(x.tekst||"").replace(/,\s*,/g, ",");
+              return x.type==="vejnavn"
+                ? {slags:"vej", titel:(x.forslagstekst||t).trim(), under:"Vej · skriv husnummer", adresse:null}
+                : {slags:"adresse", titel:t, under:"Adresse", adresse:t};
+            }));
+            tegn();
+          })
+          .catch(function(){ tegn(); });
+      },250);
+    });
+  }
+
   /* ---- Views ---- */
   function showView(v){
     document.querySelectorAll(".view").forEach(function(s){s.classList.remove("active");});
     $("view-"+v).classList.add("active");
-    document.querySelectorAll(".tab").forEach(function(t){t.classList.toggle("active", t.getAttribute("data-view")===v);});
+    document.querySelectorAll(".sb-item[data-view]").forEach(function(t){t.classList.toggle("active", t.getAttribute("data-view")===v);});
     if(v==="pipeline") renderPipeline();
     if(v==="find" && map){ setTimeout(function(){ map.invalidateSize(); }, 50); }
     window.scrollTo({top:0});
   }
   window.showView = showView;
-  document.querySelectorAll(".tab").forEach(function(t){
+  document.querySelectorAll(".sb-item[data-view]").forEach(function(t){
     t.addEventListener("click", function(){ showView(t.getAttribute("data-view")); });
   });
 
@@ -1261,7 +1422,7 @@
   function dcard(k,v,s){ return '<div class="dcard"><div class="k">'+k+'</div><div class="v">'+v+'</div><div class="s">'+s+'</div></div>'; }
 
   /* ---- Business case (detail) — unchanged evaluation page ---- */
-  var detailReturn="find";
+  var detailReturn="soeg";   // dybt link lander paa soegningen, ikke kortet
   window.backFromDetail=function(){ showView(detailReturn); };
   function openDetail(id){
     var av=document.querySelector(".view.active");
@@ -1760,36 +1921,6 @@
     var el=$("reg-antal"); if(el) el.textContent = registerAntal()+(registerAntal()===1? " ejendom":" ejendomme");
   }
 
-  function soegEjer(q){
-    var box=$("reg-resultat"); if(!box) return;
-    q=(q||"").trim().toLowerCase();
-    if(q.length<2){ box.innerHTML=""; return; }
-    var traf=[];
-    Object.keys(REGISTER).forEach(function(b){
-      var r=REGISTER[b];
-      var match=(r.ejere||[]).filter(function(e){ return (e.navn||"").toLowerCase().indexOf(q)>-1; });
-      if(match.length) traf.push({r:r, navne:match.map(function(e){return e.navn;})});
-    });
-    if(!traf.length){
-      box.innerHTML='<div class="empty" style="padding:14px 0;">Ingen ejere i dit register matcher \u201d'+q+'\u201d.</div>';
-      return;
-    }
-    // grupper pr. ejernavn, saa man ser hvem der ejer flere
-    var pr={};
-    traf.forEach(function(t){ t.navne.forEach(function(n){ (pr[n]=pr[n]||[]).push(t.r); }); });
-    box.innerHTML = Object.keys(pr).sort().map(function(n){
-      var liste=pr[n];
-      return '<div class="reg-ejer"><div class="reg-navn">'+n+
-        ' <span class="pop-dim">'+liste.length+(liste.length===1? " ejendom":" ejendomme")+'</span></div>'+
-        liste.map(function(r){
-          return '<div class="ef-item" data-adr="'+r.adresse+'">'+r.adresse+
-            '<span class="lk-type">'+(r.type||"")+(r.areal? " · "+r.areal+" m²":"")+'</span></div>';
-        }).join("")+'</div>';
-    }).join("");
-    box.querySelectorAll(".ef-item").forEach(function(el){
-      el.addEventListener("click", function(){ doLookup(el.getAttribute("data-adr")); });
-    });
-  }
 
   /* ---- Real property lookup (adresse -> live registerdata via Worker) ---- */
   function toProp(p){
@@ -1919,8 +2050,8 @@
 
   document.querySelectorAll(".segbtn button").forEach(function(b){ b.addEventListener("click", function(){ pipeView=b.getAttribute("data-pv"); document.querySelectorAll(".segbtn button").forEach(function(x){x.classList.toggle("active", x===b);}); renderPipeline(); }); });
   initMap(); initFilters(); initOmraade(); initAssistant();
-  lookupInit("lk-input","lk-sugg");
-  if($("reg-input")) $("reg-input").addEventListener("input", function(){ soegEjer(this.value); });
+  initSamletSoeg();
+
   opdaterRegisterTael();
   lookupInit("dlk-input","dlk-sugg");
   renderDash(); savePipe();
