@@ -259,6 +259,40 @@
   .kort-graa{filter:saturate(.45) contrast(.96) brightness(1.02);}
 
 
+
+  /* ---- Ejendomsside: nøgletal og faneblade ---- */
+  .dhoved{display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap;}
+  .dhoved .dikon{width:44px; height:44px; border-radius:10px; background:var(--blue-bg); color:var(--blue);
+                 display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .dhoved .dikon svg{width:21px; height:21px; stroke:currentColor; fill:none; stroke-width:1.6;
+                     stroke-linecap:round; stroke-linejoin:round;}
+  .dhoved .dtitel{flex:1; min-width:220px;}
+  /* Nøgletallene staar i én stribe. Det er det foerste oejet moeder, saa de
+     skal kunne laeses paa ét blik — derfor mono og tabulartal. */
+  .dnoegle{display:flex; flex-wrap:wrap; gap:22px 36px; margin:20px 0 2px;}
+  .dn .v{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:22px; font-weight:500;
+         letter-spacing:-0.03em; line-height:1.15;}
+  .dn .k{font-size:12.5px; color:var(--muted); margin-top:3px;}
+  .dbygtype{margin:16px 0 0; font-size:14.5px;}
+  .dbygtype span{display:block; font-size:12.5px; color:var(--muted); margin-top:2px;}
+  .dfaner{display:flex; gap:7px; flex-wrap:wrap; margin:20px 0 0; padding-bottom:18px; border-bottom:1px solid var(--line);}
+  .dfane{padding:8px 17px; border:1px solid var(--line); background:#fff; font:inherit; font-size:14px;
+         color:var(--muted); cursor:pointer; border-radius:var(--radius-sm); white-space:nowrap;}
+  .dfane:hover{background:var(--bg3); color:var(--ink);}
+  .dfane.active{background:var(--blue); border-color:var(--blue); color:#fff;}
+  .dfane[disabled]{opacity:.45; cursor:default;}
+  .dfane[disabled]:hover{background:#fff; color:var(--muted);}
+  .dpane{display:none;}
+  .dpane.active{display:grid; gap:16px;}
+  .dejer{display:flex; align-items:center; gap:12px; padding:12px 18px; border-top:1px solid var(--line-blod);}
+  .kcard-t + .dejer{border-top:none;}
+  .dejer .ikon{width:34px; height:34px; border-radius:9px; background:var(--blue-bg); color:var(--blue);
+               display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .dejer .ikon svg{width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:1.7;
+                   stroke-linecap:round; stroke-linejoin:round;}
+  .dejer .n1{display:block; font-size:14.5px; font-weight:500;}
+  .dejer .n2{display:block; font-size:12.5px; color:var(--faint); margin-top:1px;}
+
   /* ---- Sidebar-skal ---- */
   .sidebar{position:fixed; left:0; top:0; bottom:0; width:250px; background:#fff; border-right:1px solid var(--line);
            padding:0 14px 20px; overflow-y:auto; z-index:900;}
@@ -1566,12 +1600,57 @@
         '</div>'
       : '';
 
+    /* ---- Noegletal: kun det vi faktisk har tal paa ---- */
+    function dn(v,k){ return v==null||v===""? "" : '<div class="dn"><div class="v">'+v+'</div><div class="k">'+k+'</div></div>'; }
+    var noegle =
+      dn(d.grundareal!=null? nf.format(d.grundareal) : null, "Grundareal m²")+
+      dn(bygAreal!=null? nf.format(bygAreal) : null, "Bygningsareal m²")+
+      dn(boligAreal!=null? nf.format(boligAreal) : null, "Boligareal m²")+
+      dn(d.year || null, "Opført")+
+      dn(antalByg||null, antalByg===1? "Bygning":"Bygninger")+
+      dn(antalEnh||null, antalEnh===1? "Enhed":"Enheder")+
+      dn(ejl&&ejl.værelser!=null? ejl.værelser : null, "Værelser");
+
+    // Bygningstyper opsummeres som "2x Enfamiliehus", ligesom paa forlaegget
+    var typeTael={};
+    (d.bygninger||[]).forEach(function(b){ var t=b.anvendelse||"Ukendt"; typeTael[t]=(typeTael[t]||0)+1; });
+    var typeTekst=Object.keys(typeTael).map(function(t){ return typeTael[t]+"x "+t; }).join(" · ");
+
+    var IK_HUS='<svg viewBox="0 0 24 24"><path d="M4 10l8-6 8 6v9a1 1 0 01-1 1H5a1 1 0 01-1-1z"/><path d="M9 20v-6h6v6"/></svg>';
+    var IK_PERS='<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6"/></svg>';
+    var IK_FIRMA='<svg viewBox="0 0 24 24"><path d="M4 20V6a1 1 0 011-1h9a1 1 0 011 1v14"/><path d="M15 10h4a1 1 0 011 1v9"/><path d="M8 9h3M8 13h3"/><path d="M2 20h20"/></svg>';
+
+    /* ---- Ejere som raekker med ikon, andel og ejertid ---- */
+    var ejerRaekker = (d.ejere&&d.ejere.length)
+      ? d.ejere.map(function(e){
+          var firma=/\b(a\/s|aps|p\/s|i\/s|k\/s|holding|ejendomme|invest|fond|forening|kommune|stat)\b/i.test(e.navn||"");
+          var aar=e.overtagelsesdato? +String(e.overtagelsesdato).slice(0,4) : null;
+          var under=[];
+          if(e.andel && e.andel!=="1/1") under.push("Andel "+e.andel);
+          if(e.overtagelsesdato) under.push("overtaget "+dkDato(e.overtagelsesdato));
+          if(aar) under.push((YEAR-aar)+" års ejertid");
+          return '<div class="dejer"><span class="ikon">'+(firma?IK_FIRMA:IK_PERS)+'</span>'+
+                 '<span><span class="n1">'+e.navn+'</span>'+
+                 (under.length? '<span class="n2">'+under.join(" · ")+'</span>':'')+'</span></div>';
+        }).join("")
+      : "";
+
+    var ejerKort =
+      '<div class="kcard">'+
+        '<div class="kcard-t"><span class="kicon">'+(d.ejere&&d.ejere.length>1? "☷":"☖")+'</span>Ejere'+
+          '<span class="fine">Hvem ejer ejendommen?</span></div>'+
+        (ejerRaekker || knote(d.ownerType
+            ? 'Ejerforhold: '+d.ownerType+' · ejernavn hentes når du åbner ejendommen'
+            : 'Ejernavn kræver adgang til Ejerfortegnelsen'))+
+        (ejerRaekker && d.ownerType? kinfo("Ejerforhold", d.ownerType) : "")+
+        (d.ejerforening? kinfo("Ejendomsform", "Opdelt i "+d.ejerforening.antalEjerlejligheder+" ejerlejligheder") : "")+
+      '</div>';
+
     $("detail-body").innerHTML =
-      '<div class="dhead">'+
-        '<div>'+
+      '<div class="dhoved">'+
+        '<span class="dikon">'+IK_HUS+'</span>'+
+        '<div class="dtitel">'+
           '<div class="dbadges">'+
-            // Boligkategori frem for "Ejendom". Samme mapping som kort-popup'en
-            // bruger, så et jordstykke og dets ejendomsside siger det samme.
             '<span class="dbadge">'+(ejl? 'Ejerlejlighed' : (bygningstype(d) || d.type || 'Ejendom'))+'</span>'+
           '</div>'+
           '<div class="addr">'+d.addr+(d.city? ', '+d.city : '')+'</div>'+
@@ -1583,45 +1662,62 @@
           '<button class="btn sm '+(inPipe(d.id)?'ghost':'')+'" id="pipe-btn">'+(inPipe(d.id)?'✓ I din pipeline':'+ Gem som lead')+'</button>'+
         '</div>'+
       '</div>'+
-      '<div class="dgrid">'+
+      (noegle? '<div class="dnoegle">'+noegle+'</div>' : '')+
+      (typeTekst? '<div class="dbygtype">'+typeTekst+'<span>Bygningstyper</span></div>' : '')+
+      '<div class="dfaner">'+
+        '<button class="dfane active" data-pane="oversigt">Oversigt</button>'+
+        '<button class="dfane" data-pane="bbr">BBR</button>'+
+        '<button class="dfane" disabled title="Kræver adgang til Vurderingsstyrelsen">Vurderinger</button>'+
+        '<button class="dfane" disabled title="Kræver adgang til Tinglysning">Tinglysning</button>'+
+        '<button class="dfane" disabled title="Kræver adgang til Energistyrelsens EMO">Energi</button>'+
+      '</div>'+
+      '<div class="dgrid" style="margin-top:18px;">'+
         '<div class="dcol">'+
-          '<div class="boxes">'+
-          '<div class="kcard">'+
-            '<div class="kcard-t"><span class="kicon">▦</span>Arealer'+
-              (d.real&&ejl&&ejl.parentAdresse? '<button class="lnk" id="moder-btn" data-adr="'+ejl.parentAdresse+'">Gå til hovedejendommen →</button>' : '')+
+          '<div class="dpane active" id="pane-oversigt">'+
+            ejerKort+
+            '<div class="boxes">'+
+              '<div class="kcard">'+
+                '<div class="kcard-t"><span class="kicon">▦</span>Arealer'+
+                  (d.real&&ejl&&ejl.parentAdresse? '<button class="lnk" id="moder-btn" data-adr="'+ejl.parentAdresse+'">Gå til hovedejendommen →</button>' : '')+
+                '</div>'+
+                kblok(aMatrikel, "1 matrikel")+
+                kblok(aBygninger, antalByg+(antalByg===1?" bygning":" bygninger"))+
+                kblok(aEnheder, (antalEnh? antalEnh+(antalEnh===1?" enhed":" enheder") : "Enheder")+
+                  (ejl&&ejl.fordelingstal? " · fordelingstal "+ejl.fordelingstal : ""))+
+              '</div>'+
+              '<div class="kcard">'+
+                '<div class="kcard-t"><span class="kicon">kr</span>Økonomi</div>'+
+                (handel? kblok(handel,"Seneste handel") : knote('Handelshistorik kræver adgang til Tinglysning'))+
+                (vurdering? kblok(vurdering,"Vurdering") : knote('Vurdering og grundskyld kræver adgang til VUR'))+
+              '</div>'+
             '</div>'+
-            kblok(aMatrikel, "1 matrikel")+
-            kblok(aBygninger, antalByg+(antalByg===1?" bygning":" bygninger"))+
-            kblok(aEnheder, (antalEnh? antalEnh+(antalEnh===1?" enhed":" enheder") : "Enheder")+
-              (ejl&&ejl.fordelingstal? " · fordelingstal "+ejl.fordelingstal : ""))+
+            (mangler.length? '<div class="mangler" style="margin:0; border:none; padding:0;"><b>Ikke koblet på endnu:</b> '+mangler.join(" · ")+'</div>' : '')+
           '</div>'+
-          '<div class="dstack">'+
-            '<div class="kcard">'+
-              '<div class="kcard-t"><span class="kicon">☖</span>Ejendommen</div>'+
-              (ejendomLinjer || knote('Ingen stamdata tilgængelige'))+
-              (ejerNavnEllerNull(d)? '' : knote('Ejernavn kræver EJF-certifikat'))+
-            '</div>'+
-            '<div class="kcard">'+
-              '<div class="kcard-t"><span class="kicon">kr</span>Økonomi</div>'+
-              (handel? kblok(handel,"Seneste handel") : knote('Handelshistorik kræver adgang til Tinglysning'))+
-              (vurdering? kblok(vurdering,"Vurdering") : knote('Vurdering og grundskyld kræver adgang til VUR'))+
-            '</div>'+
+          '<div class="dpane" id="pane-bbr">'+
+            (bbrKort || '<div class="kcard">'+knote('Ingen BBR-data på denne ejendom.')+'</div>')+
+            (d.real&&d.matrikel? '<div class="kcard" id="enheder-kort" style="display:none;">'+
+              '<div class="kcard-t"><span class="kicon">☰</span><span id="enheder-titel">Enheder på hovedejendommen</span>'+
+              '<span class="fine" id="enheder-fine"></span></div>'+
+              '<div class="ef-list" id="enheder-liste" style="margin:0; border:none; border-radius:0;"></div>'+
+              '<div class="knote" id="enheder-note"></div>'+
+            '</div>' : '')+
           '</div>'+
-          '</div>'+
-          (mangler.length? '<div class="mangler" style="margin:0; border:none; padding:0;"><b>Ikke koblet på endnu:</b> '+mangler.join(" · ")+'</div>' : '')+
-          bbrKort+
-          (d.real&&d.matrikel? '<div class="kcard" id="enheder-kort" style="display:none;">'+
-            '<div class="kcard-t"><span class="kicon">☰</span><span id="enheder-titel">Enheder på hovedejendommen</span>'+
-            '<span class="fine" id="enheder-fine"></span></div>'+
-            '<div class="ef-list" id="enheder-liste" style="margin:0; border:none; border-radius:0;"></div>'+
-            '<div class="knote" id="enheder-note"></div>'+
-          '</div>' : '')+
         '</div>'+
         '<div class="kcard dmapkort">'+
           '<div id="detail-map" class="dmap"></div>'+
           '<div class="dmap-note" id="dmap-note"></div>'+
         '</div>'+
       '</div>';
+
+    // Fanebladene skifter kun hvilken rude der vises — kortet bliver staaende,
+    // saa man ikke mister stedet naar man skifter faneblad.
+    document.querySelectorAll(".dfane[data-pane]").forEach(function(f){
+      f.addEventListener("click", function(){
+        document.querySelectorAll(".dfane[data-pane]").forEach(function(x){ x.classList.toggle("active", x===f); });
+        var m=f.getAttribute("data-pane");
+        document.querySelectorAll(".dpane").forEach(function(pn){ pn.classList.toggle("active", pn.id==="pane-"+m); });
+      });
+    });
     $("pipe-btn").addEventListener("click", function(){ addPipe(d.id); openDetail(d.id); });
     ["parent-btn","moder-btn"].forEach(function(bid){
       var b=document.getElementById(bid);
